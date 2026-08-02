@@ -52,7 +52,7 @@ class SystemAudioController:
                 self.max_vol = vol_range[1]
                 print(f"[AudioController] Windows Pycaw initialized. Vol range: {self.min_vol} to {self.max_vol} dB")
             except Exception as e:
-                print(f"[AudioController] Pycaw initialization warning: {e}. Using virtual audio controller.")
+                print(f"[AudioController] Pycaw warning: {e}. Using virtual audio controller.")
                 self.volume_interface = None
         else:
             print(f"[AudioController] Operating System: {self.os_type}. Using cross-platform audio interface.")
@@ -62,7 +62,7 @@ class SystemAudioController:
         if self.volume_interface:
             try:
                 self.volume_interface.SetMasterVolumeLevel(float(vol_db), None)
-            except Exception as e:
+            except Exception:
                 pass
 
     def set_volume_pct(self, vol_pct):
@@ -88,14 +88,39 @@ class SystemAudioController:
         return self.current_vol_pct
 
 
+def initialize_camera(requested_idx=0):
+    """
+    Initialize VideoCapture with fallback options across index 0, 1, 2.
+    """
+    indices_to_try = [requested_idx] + [i for i in [0, 1, 2] if i != requested_idx]
+    
+    for idx in indices_to_try:
+        print(f"[CameraInit] Attempting to open VideoCapture({idx})...")
+        cap = cv2.VideoCapture(idx)
+        if cap.isOpened():
+            ret, frame = cap.read()
+            if ret and frame is not None and frame.size > 0:
+                print(f"[CameraInit] Successfully connected to Camera Index {idx}!")
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+                return cap, idx
+            cap.release()
+    
+    print("[CameraInit] Warning: No hardware camera device found or accessible at index 0, 1, or 2.")
+    return None, requested_idx
+
+
 def run_volume_control():
     """
     Main loop for Real-time Hand Gesture Volume Control.
     """
+    # Check command-line argument for camera index (e.g. python src/volume_control.py 1)
+    cam_index = 0
+    if len(sys.argv) > 1 and sys.argv[1].isdigit():
+        cam_index = int(sys.argv[1])
+
     # Initialize Camera
-    cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+    cap, active_cam_idx = initialize_camera(cam_index)
 
     # Initialize Hand Detector and Audio Controller
     detector = HandDetector(detection_con=0.7, track_con=0.7, max_hands=1)
@@ -121,60 +146,67 @@ def run_volume_control():
     print("=======================================================\n")
 
     while True:
-        success, img = cap.read()
-        if not success:
-            print("[Warning] Unable to capture camera frame. Retrying...")
-            time.sleep(0.1)
-            # Create a black frame fallback if no camera is available
+        if cap is not None and cap.isOpened():
+            success, img = cap.read()
+        else:
+            success = False
+            img = None
+
+        if not success or img is None or img.size == 0:
+            # Create a user-friendly dark template frame if camera is not producing video
             img = np.zeros((720, 1280, 3), dtype=np.uint8)
-            cv2.putText(
-                img,
-                "Camera Not Found - Interactive Demo Mode",
-                (300, 360),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1.0,
-                (0, 0, 255),
-                2
-            )
+            cv2.rectangle(img, (200, 220), (1080, 500), (30, 30, 30), cv2.FILLED)
+            cv2.rectangle(img, (200, 220), (1080, 500), (0, 0, 255), 3)
+            
+            cv2.putText(img, "CAMERA NOT DETECTED / ACCESSIBLE", (240, 280),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+            cv2.putText(img, "1. If in GitHub Codespaces/Cloud: Run this on your LOCAL laptop!", (240, 340),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+            cv2.putText(img, "2. Check Windows Camera Privacy Settings (Allow apps)", (240, 380),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+            cv2.putText(img, "3. Try another index: python src/volume_control.py 1", (240, 420),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+            cv2.putText(img, "4. Ensure Zoom/Teams/Browser is not using webcam", (240, 460),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
+        else:
+            # Flip image horizontally for natural mirror view
+            img = cv2.flip(img, 1)
 
-        # Flip image horizontally for natural mirror view
-        img = cv2.flip(img, 1)
+            # 1. Find Hands
+            img = detector.find_hands(img, draw=True)
+            lm_list, bbox = detector.find_positions(img, draw=False)
 
-        # 1. Find Hands
-        img = detector.find_hands(img, draw=True)
-        lm_list, bbox = detector.find_positions(img, draw=False)
+            if len(lm_list) != 0:
+                # 2. Extract landmark 4 (Thumb tip) and landmark 8 (Index tip)
+                x1, y1 = lm_list[4][1], lm_list[4][2]
+                x2, y2 = lm_list[8][1], lm_list[8][2]
+                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
 
-        if len(lm_list) != 0:
-            # 2. Extract landmark 4 (Thumb tip) and landmark 8 (Index tip)
-            x1, y1 = lm_list[4][1], lm_list[4][2]
-            x2, y2 = lm_list[8][1], lm_list[8][2]
-            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+                # 3. Calculate distance between thumb and index tips
+                length, img, _ = detector.find_distance(4, 8, img, draw=True, r=10, t=3)
 
-            # 3. Calculate distance between thumb and index tips
-            length, img, _ = detector.find_distance(4, 8, img, draw=True, r=10, t=3)
+                # 4. Convert distance to volume range
+                vol_per = np.interp(length, [min_dist, max_dist], [0, 100])
+                vol_bar = np.interp(length, [min_dist, max_dist], [400, 150])
 
-            # 4. Convert distance to volume range
-            vol_per = np.interp(length, [min_dist, max_dist], [0, 100])
-            vol_bar = np.interp(length, [min_dist, max_dist], [400, 150])
+                # Smooth volume level
+                vol_per = smoothness * round(vol_per / smoothness)
 
-            # Smooth volume level
-            vol_per = smoothness * round(vol_per / smoothness)
+                # 5. Set System Volume
+                audio_ctrl.set_volume_pct(vol_per)
 
-            # 5. Set System Volume
-            audio_ctrl.set_volume_pct(vol_per)
-
-            # Visual feedback when pinched close (muted / min volume)
-            if length < 25:
-                cv2.circle(img, (cx, cy), 12, (0, 255, 0), cv2.FILLED)
-                cv2.putText(
-                    img,
-                    "MUTED / MIN",
-                    (cx - 50, cy - 25),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (0, 255, 0),
-                    2
-                )
+                # Visual feedback when pinched close (muted / min volume)
+                if length < 25:
+                    cv2.circle(img, (cx, cy), 12, (0, 255, 0), cv2.FILLED)
+                    cv2.putText(
+                        img,
+                        "MUTED / MIN",
+                        (cx - 50, cy - 25),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6,
+                        (0, 255, 0),
+                        2
+                    )
 
         # Draw UI Components
         # Vertical Volume Bar
@@ -235,7 +267,8 @@ def run_volume_control():
             print("\nExiting Volume Control Module... Goodbye!")
             break
 
-    cap.release()
+    if cap is not None:
+        cap.release()
     cv2.destroyAllWindows()
 
 
