@@ -17,6 +17,7 @@ Developed by **Himesh Rupchandani** (CSE AI & DS Student, Rajkot, Gujarat).
 - 🎯 **Real-time 21-Landmark Hand Tracking:** Powered by Google MediaPipe & OpenCV.
 - 🔊 **Right Hand Volume Control (Prompt 1):** Dynamically control OS master volume by adjusting Right Hand Thumb-to-Index distance.
 - ☀️ **Left Hand Brightness Control (Prompt 2):** Dynamically control screen brightness by adjusting Left Hand Thumb-to-Index distance.
+- 🚀 **Dual Master Controller:** Control BOTH Volume and Brightness simultaneously in a single camera window!
 - 📊 **Visual Feedback HUD:** Dual-sided visual bars (Green Volume bar on Left, Gold Sun Brightness bar on Right).
 - 🎮 **Dual Execution Mode:** Runs with live hardware webcam or interactive 3D hand simulator fallback.
 - ⚡ **Low Latency Performance:** Runs smoothly at 30+ FPS on standard laptop webcams.
@@ -29,6 +30,7 @@ Developed by **Himesh Rupchandani** (CSE AI & DS Student, Rajkot, Gujarat).
 | :--- | :--- | :--- | :--- | :--- |
 | **Volume Control** | **Right Hand** 🖐️ | Thumb + Index Pinch/Spread | Volume 0% $\leftrightarrow$ 100% | Green Bar (Left Side) |
 | **Brightness Control** | **Left Hand** 🤚 | Thumb + Index Pinch/Spread | Brightness 0% $\leftrightarrow$ 100% | Gold Sun Bar ☀️ (Right Side) |
+| **Dual Master Control** | **Both Hands** 🖐️🤚 | Concurrent Left & Right Hand Gestures | Dual Volume & Brightness Control | Dual Green & Gold HUD Bars |
 
 ---
 
@@ -46,7 +48,8 @@ HandGesture-Master-Control/
 └── src/
     ├── hand_tracker.py       ← Reusable MediaPipe Hand Detector Module
     ├── volume_control.py     ← Prompt 1: Right Hand Volume Controller
-    └── brightness_control.py ← Prompt 2: Left Hand Brightness Controller
+    ├── brightness_control.py ← Prompt 2: Left Hand Brightness Controller
+    └── master_control.py     ← Dual Controller (Runs Volume & Brightness Together!)
 ```
 
 ---
@@ -66,12 +69,17 @@ pip install -r requirements.txt
 
 ### 3. Run Modules
 
-**Run Volume Control (Prompt 1 - Right Hand):**
+**Option A: Run BOTH Volume & Brightness Simultaneously (Recommended!):**
+```bash
+python src/master_control.py
+```
+
+**Option B: Run Volume Control Only (Right Hand):**
 ```bash
 python src/volume_control.py
 ```
 
-**Run Brightness Control (Prompt 2 - Left Hand):**
+**Option C: Run Brightness Control Only (Left Hand):**
 ```bash
 python src/brightness_control.py
 ```
