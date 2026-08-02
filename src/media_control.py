@@ -3,12 +3,12 @@ Universal Media Seeking Module using Super Easy Finger Count Gestures (Prompt 3)
 Works on YouTube, Netflix, Prime Video, VLC, Spotify, and Web Video Players.
 
 Easiest Gesture Controls (Zero Effort!):
-  ☝️ 1 Finger (Index Only)    : SEEK BACKWARD (-10s)  [Sends Universal Left Arrow + 'J']
-  ✌️ 2 Fingers (Peace Sign)   : SEEK FORWARD (+10s)   [Sends Universal Right Arrow + 'L']
+  <- 1 Finger (Index Only)    : SEEK BACKWARD (-10s)  [Sends Universal 'J' + Left Arrow]
+  -> 2 Fingers (Peace Sign)   : SEEK FORWARD (+10s)   [Sends Universal 'L' + Right Arrow]
   🖐️ Open Palm / ✊ Fist       : IDLE (No Action)
 
-Uses Windows Native Hardware Keybd_Event Injection to control background media players
-even when OpenCV window is focused!
+Uses Windows Native VK_J (0x4A) & VK_L (0x4C) Hardware Keybd_Event Injection to control
+YouTube and browser video players directly!
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
@@ -39,19 +39,19 @@ except ImportError:
 class UniversalMediaController:
     """
     Universal media playback seek controller sending native OS hardware key events.
-    Supports YouTube, Netflix, Prime, VLC, Spotify, and Web Video Players.
+    Supports YouTube ('j'/'l' hotkeys), Netflix, Prime, VLC, Spotify, and Web Video Players.
     """
 
     def __init__(self):
         self.os_type = platform.system()
         self.last_action_time = 0
         self.cooldown_sec = 1.0  # Cooldown between seek triggers
-        self.last_action_text = "READY - SHOW 1 FINGER (BACK) OR 2 FINGERS (FORWARD)"
+        self.last_action_text = "READY - SHOW 1 FINGER (BACKWARD) OR 2 FINGERS (FORWARD)"
         self.last_action_color = CyberpunkTheme.CYAN
 
     def seek_backward(self):
         """
-        Triggers Media Seek Backward (-10s) using Windows Hardware Keybd_Event & PyAutoGUI.
+        Triggers Media Seek Backward (-10s) sending 'J' (YouTube) & 'Left Arrow' (Universal).
         """
         now = time.time()
         if now - self.last_action_time >= self.cooldown_sec:
@@ -59,28 +59,34 @@ class UniversalMediaController:
                 try:
                     import ctypes
                     VK_LEFT = 0x25
-                    # Inject raw hardware VK_LEFT keypress into Windows OS
+                    VK_J = 0x4A  # 'J' key is YouTube's official -10s seek hotkey
+                    
+                    # Inject VK_J
+                    ctypes.windll.user32.keybd_event(VK_J, 0, 0, 0)
+                    ctypes.windll.user32.keybd_event(VK_J, 0, 2, 0)  # KEYEVENTF_KEYUP = 2
+                    
+                    # Inject VK_LEFT
                     ctypes.windll.user32.keybd_event(VK_LEFT, 0, 0, 0)
-                    ctypes.windll.user32.keybd_event(VK_LEFT, 0, 2, 0)  # KEYEVENTF_KEYUP = 2
+                    ctypes.windll.user32.keybd_event(VK_LEFT, 0, 2, 0)
                 except Exception as err:
                     print(f"[MediaController] Windows keybd_event error: {err}")
 
             try:
-                pyautogui.press('left')
                 pyautogui.press('j')
+                pyautogui.press('left')
             except Exception:
                 pass
 
             self.last_action_time = now
-            self.last_action_text = "☝️ 1 FINGER -> SEEK BACKWARD (-10s)"
+            self.last_action_text = "<- 1 FINGER -> SEEK BACKWARD (-10s)"
             self.last_action_color = CyberpunkTheme.MAGENTA
-            print("[MediaController] ☝️ 1 Finger Detected -> Seek Backward (-10s)")
+            print("[MediaController] <- 1 Finger Detected -> Seek Backward (-10s)")
             return True
         return False
 
     def seek_forward(self):
         """
-        Triggers Media Seek Forward (+10s) using Windows Hardware Keybd_Event & PyAutoGUI.
+        Triggers Media Seek Forward (+10s) sending 'L' (YouTube) & 'Right Arrow' (Universal).
         """
         now = time.time()
         if now - self.last_action_time >= self.cooldown_sec:
@@ -88,22 +94,28 @@ class UniversalMediaController:
                 try:
                     import ctypes
                     VK_RIGHT = 0x27
-                    # Inject raw hardware VK_RIGHT keypress into Windows OS
+                    VK_L = 0x4C  # 'L' key is YouTube's official +10s seek hotkey
+                    
+                    # Inject VK_L
+                    ctypes.windll.user32.keybd_event(VK_L, 0, 0, 0)
+                    ctypes.windll.user32.keybd_event(VK_L, 0, 2, 0)  # KEYEVENTF_KEYUP = 2
+                    
+                    # Inject VK_RIGHT
                     ctypes.windll.user32.keybd_event(VK_RIGHT, 0, 0, 0)
-                    ctypes.windll.user32.keybd_event(VK_RIGHT, 0, 2, 0)  # KEYEVENTF_KEYUP = 2
+                    ctypes.windll.user32.keybd_event(VK_RIGHT, 0, 2, 0)
                 except Exception as err:
                     print(f"[MediaController] Windows keybd_event error: {err}")
 
             try:
-                pyautogui.press('right')
                 pyautogui.press('l')
+                pyautogui.press('right')
             except Exception:
                 pass
 
             self.last_action_time = now
-            self.last_action_text = "✌️ 2 FINGERS -> SEEK FORWARD (+10s)"
+            self.last_action_text = "-> 2 FINGERS -> SEEK FORWARD (+10s)"
             self.last_action_color = CyberpunkTheme.YELLOW
-            print("[MediaController] ✌️ 2 Fingers Detected -> Seek Forward (+10s)")
+            print("[MediaController] -> 2 Fingers Detected -> Seek Forward (+10s)")
             return True
         return False
 
@@ -171,7 +183,6 @@ def generate_simulated_finger_frame(finger_count):
 
     wrist = (640, 520)
 
-    # Draw synthetic hand with 1 or 2 fingers extended
     cv2.circle(img, wrist, 14, CyberpunkTheme.MAGENTA, cv2.FILLED)
 
     # Finger 1 (Index)
@@ -187,7 +198,7 @@ def generate_simulated_finger_frame(finger_count):
     # Controls Card
     cv2.rectangle(img, (750, 540), (1250, 690), CyberpunkTheme.DARK_CARD, cv2.FILLED)
     cv2.rectangle(img, (750, 540), (1250, 690), CyberpunkTheme.CYAN, 2)
-    cv2.putText(img, "🎬 EASY FINGER SEEK CONTROLS:", (765, 575),
+    cv2.putText(img, "EASY FINGER SEEK CONTROLS:", (765, 575),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.52, CyberpunkTheme.CYAN, 2)
     cv2.putText(img, " • Press '1' / 'A' : Show 1 Finger (Seek -10s)", (765, 605),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.MAGENTA, 1)
@@ -226,10 +237,10 @@ def run_media_control():
     print(" Theme: CYBERPUNK NEON ⚡")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
     print(" Gesture Rules (Super Easy!):")
-    print("  ☝️ 1 Finger Extended (Index)   : SEEK BACKWARD (-10s)")
-    print("  ✌️ 2 Fingers Extended (Peace)  : SEEK FORWARD (+10s)")
+    print("  <- 1 Finger Extended (Index)   : SEEK BACKWARD (-10s)")
+    print("  -> 2 Fingers Extended (Peace)  : SEEK FORWARD (+10s)")
     print("  🖐️ Open Palm / ✊ Fist          : IDLE (No Action)")
-    print(" Compatible: YouTube, Netflix, Prime, VLC, Spotify & Web Players")
+    print(" Compatible: YouTube ('J'/'L'), Netflix, Prime, VLC, Spotify & Web Players")
     print(" Press 'Q' or 'ESC' to Quit")
     print("=======================================================\n")
 
@@ -263,16 +274,16 @@ def run_media_control():
                 fingers = detector.fingers_up()
                 num_fingers = sum(fingers)
 
-                # ☝️ 1 FINGER EXTENDED (Index Finger Only) -> SEEK BACKWARD (-10s)
+                # <- 1 FINGER EXTENDED (Index Finger Only) -> SEEK BACKWARD (-10s)
                 if num_fingers == 1 and fingers[1] == 1:
                     media_ctrl.seek_backward()
-                    cv2.putText(img, "1 FINGER -> BACKWARD", (lm_list[8][1] - 80, lm_list[8][2] - 30),
+                    cv2.putText(img, "<- 1 FINGER -> SEEK BACKWARD", (lm_list[8][1] - 120, lm_list[8][2] - 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, CyberpunkTheme.MAGENTA, 2)
 
-                # ✌️ 2 FINGERS EXTENDED (Index + Middle / Peace Sign) -> SEEK FORWARD (+10s)
+                # -> 2 FINGERS EXTENDED (Index + Middle / Peace Sign) -> SEEK FORWARD (+10s)
                 elif num_fingers == 2 and fingers[1] == 1 and fingers[2] == 1:
                     media_ctrl.seek_forward()
-                    cv2.putText(img, "2 FINGERS -> FORWARD", (lm_list[8][1] - 80, lm_list[8][2] - 30),
+                    cv2.putText(img, "-> 2 FINGERS -> SEEK FORWARD", (lm_list[8][1] - 120, lm_list[8][2] - 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, CyberpunkTheme.YELLOW, 2)
 
         # Draw UI Overlay Components
@@ -290,7 +301,7 @@ def run_media_control():
         )
         cv2.putText(
             img,
-            "☝️ 1 Finger: SEEK BACKWARD (-10s) | ✌️ 2 Fingers: SEEK FORWARD (+10s)",
+            "<- 1 Finger: SEEK BACKWARD (-10s) | -> 2 Fingers: SEEK FORWARD (+10s)",
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.4,
@@ -308,7 +319,7 @@ def run_media_control():
             banner_text,
             (300, 660),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
+            0.6,
             banner_color,
             2
         )
