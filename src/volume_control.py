@@ -4,7 +4,7 @@ Controls system volume based on distance between Thumb Tip (Landmark 4) and Inde
 
 Features Dual Execution Modes:
   1. Live Webcam Mode (Automatic when hardware camera is present)
-  2. Interactive Hand Simulator Mode (Automatic fallback for GitHub Codespaces / Cloud VMs)
+  2. Interactive Hand Simulator Mode (Automatic fallback for GitHub Codespaces / Cloud VMs / Camera errors)
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
@@ -94,29 +94,48 @@ class SystemAudioController:
 
 def initialize_camera(requested_idx=0):
     """
-    Probe hardware camera indices (0, 1, 2) to check for a working video stream.
-    Returns (VideoCapture, index) or (None, -1) if no camera stream is active.
+    Probe hardware camera indices (0, 1, 2) using DirectShow (CAP_DSHOW) on Windows
+    to prevent MSMF matrix step assertion bugs. Wrapped safely in try-except blocks.
     """
     indices_to_try = [requested_idx] + [i for i in [0, 1, 2] if i != requested_idx]
+    is_windows = (platform.system() == "Windows")
 
     for idx in indices_to_try:
-        try:
-            cap = cv2.VideoCapture(idx)
-            if cap.isOpened():
-                ret, frame = cap.read()
-                # Verify frame is non-empty and not static solid grey
-                if ret and frame is not None and frame.size > 0:
-                    mean_val = float(np.mean(frame))
-                    std_val = float(np.std(frame))
-                    # Real camera streams have variation (std_val > 5.0) unlike static dummy grey frames
-                    if std_val > 5.0:
-                        print(f"[CameraInit] Live Webcam detected and active on Index {idx}!")
-                        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-                        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-                        return cap, idx
-                cap.release()
-        except Exception:
-            pass
+        # Use CAP_DSHOW on Windows first to bypass MSMF buffer assertion crashes
+        backends = [cv2.CAP_DSHOW, cv2.CAP_ANY] if is_windows else [cv2.CAP_ANY]
+
+        for backend in backends:
+            try:
+                print(f"[CameraInit] Testing VideoCapture({idx}) with backend {backend}...")
+                cap = cv2.VideoCapture(idx, backend)
+                if cap is not None and cap.isOpened():
+                    ret, frame = False, None
+                    try:
+                        ret, frame = cap.read()
+                    except Exception as err:
+                        print(f"[CameraInit] Exception during test frame read on index {idx}: {err}")
+                        ret = False
+
+                    if ret and frame is not None and hasattr(frame, 'size') and frame.size > 0:
+                        try:
+                            mean_val = float(np.mean(frame))
+                            std_val = float(np.std(frame))
+                        except Exception:
+                            std_val = 0.0
+
+                        if std_val > 5.0:  # Real camera stream with color/light variation
+                            print(f"[CameraInit] Live Webcam connected successfully on Index {idx}!")
+                            try:
+                                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+                                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+                            except Exception:
+                                pass
+                            return cap, idx
+
+                if cap is not None:
+                    cap.release()
+            except Exception as err:
+                print(f"[CameraInit] Backend initialization error on index {idx}: {err}")
 
     print("[CameraInit] No active hardware camera stream found. Switching to Interactive Hand Simulator Mode.")
     return None, -1
@@ -139,7 +158,6 @@ def generate_simulated_hand_frame(sim_distance, auto_mode=True):
     palm = (640, 420)
 
     # Calculate pinch/spread positions
-    # Thumb Tip (Landmark 4) moves left/right based on sim_distance
     thumb_x = int(640 - sim_distance / 2)
     thumb_y = 350
     index_x = int(640 + sim_distance / 2)
@@ -240,14 +258,20 @@ def run_volume_control():
     print("=======================================================\n")
 
     while True:
+        success = False
+        img = None
+
         if not is_simulator_mode and cap is not None and cap.isOpened():
-            success, img = cap.read()
-            if not success or img is None or img.size == 0:
-                print("[Warning] Webcam stream lost. Switching to Interactive Simulator Mode.")
+            try:
+                success, img = cap.read()
+            except Exception as err:
+                print(f"[Warning] Camera read exception caught: {err}. Switching to Simulator Mode.")
+                success = False
+                img = None
+
+            if not success or img is None or not hasattr(img, 'size') or img.size == 0:
+                print("[Warning] Invalid webcam frame received. Switching to Interactive Simulator Mode.")
                 is_simulator_mode = True
-        else:
-            success = True
-            img = None
 
         if is_simulator_mode:
             # Automatic Pinch/Spread animation loop if enabled
@@ -368,7 +392,10 @@ def run_volume_control():
             auto_animate = not auto_animate
 
     if cap is not None:
-        cap.release()
+        try:
+            cap.release()
+        except Exception:
+            pass
     cv2.destroyAllWindows()
 
 
