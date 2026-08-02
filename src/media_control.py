@@ -1,10 +1,10 @@
 """
-Media Forward/Backward Control Module using Hand Swipes (Prompt 3).
+Media Forward/Backward Control Module using Rotary Hand Dial Rotation (Prompt 3).
 Universal video seeking compatible with YouTube, Netflix, Prime Video, VLC, Spotify, and Web Browsers.
 
-Gesture Mapping (Custom User Logic):
-  - Left Hand Swipe Right (👈 -> 👉) : SEEK BACKWARD (-10s)  [Sends Left Arrow Key]
-  - Right Hand Swipe Left (👉 -> 👈) : SEEK FORWARD (+10s)   [Sends Right Arrow Key]
+Gesture Mapping (Rotary Dial Mechanism 🎡):
+  - Rotate Hand Clockwise (↻ / Tilt Right)        : SEEK FORWARD (+10s)   [Sends Right Arrow Key]
+  - Rotate Hand Counter-Clockwise (↺ / Tilt Left)  : SEEK BACKWARD (-10s)  [Sends Left Arrow Key]
 
 Features Cyberpunk Neon Theme HUD & Dual Execution Modes:
   1. Live Webcam Mode (Automatic when hardware camera is present)
@@ -12,7 +12,7 @@ Features Cyberpunk Neon Theme HUD & Dual Execution Modes:
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
-Prompt: Prompt 3 - Media Forward / Backward
+Prompt: Prompt 3 - Media Forward / Backward (Rotary Dial)
 Theme: Cyberpunk Neon
 """
 
@@ -44,8 +44,8 @@ class UniversalMediaController:
 
     def __init__(self):
         self.last_action_time = 0
-        self.cooldown_sec = 1.2  # Cooldown between swipe seek triggers
-        self.last_action_text = "READY"
+        self.cooldown_sec = 1.0  # Cooldown between rotary dial triggers
+        self.last_action_text = "READY - ROTATE HAND DIAL"
         self.last_action_color = CyberpunkTheme.CYAN
 
     def seek_backward(self):
@@ -57,9 +57,9 @@ class UniversalMediaController:
             try:
                 pyautogui.press('left')
                 self.last_action_time = now
-                self.last_action_text = "⏪ SEEK BACKWARD (-10s)"
+                self.last_action_text = "↺ CCW ROTATION -> SEEK BACKWARD (-10s)"
                 self.last_action_color = CyberpunkTheme.MAGENTA
-                print("[MediaController] ⏪ Left Hand Swiped Right -> Seek Backward (-10s)")
+                print("[MediaController] ↺ Rotary Dial Left (CCW) -> Seek Backward (-10s)")
                 return True
             except Exception as e:
                 print(f"[MediaController] Keypress error: {e}")
@@ -74,9 +74,9 @@ class UniversalMediaController:
             try:
                 pyautogui.press('right')
                 self.last_action_time = now
-                self.last_action_text = "⏩ SEEK FORWARD (+10s)"
-                self.last_action_color = CyberpunkTheme.CYAN
-                print("[MediaController] ⏩ Right Hand Swiped Left -> Seek Forward (+10s)")
+                self.last_action_text = "↻ CW ROTATION -> SEEK FORWARD (+10s)"
+                self.last_action_color = CyberpunkTheme.YELLOW
+                print("[MediaController] ↻ Rotary Dial Right (CW) -> Seek Forward (+10s)")
                 return True
             except Exception as e:
                 print(f"[MediaController] Keypress error: {e}")
@@ -131,10 +131,56 @@ def initialize_camera(requested_idx=0):
     return None, -1
 
 
-def generate_simulated_swipe_frame(sim_hand, sim_x):
+def calculate_hand_angle(lm_list):
     """
-    Generates a 1280x720 Cyberpunk Neon frame rendering a synthetic moving hand skeleton
-    simulating Left Hand or Right Hand swipes for media seek testing.
+    Calculates hand orientation angle in degrees from Wrist (Landmark 0) to Middle MCP (Landmark 9).
+    Neutral upright hand is ~ -90 degrees.
+    """
+    if len(lm_list) < 10:
+        return 0.0
+
+    x0, y0 = lm_list[0][1], lm_list[0][2]
+    x9, y9 = lm_list[9][1], lm_list[9][2]
+
+    dx = x9 - x0
+    dy = y9 - y0
+
+    angle_rad = math.atan2(dy, dx)
+    angle_deg = math.degrees(angle_rad)
+    return angle_deg
+
+
+def draw_rotary_dial_hud(img, center, angle_deg, status_color):
+    """
+    Draws a Cyberpunk Neon Rotary Dial Gauge HUD overlay over the hand.
+    """
+    cx, cy = center
+    radius = 70
+
+    # Base Dial Circle
+    cv2.circle(img, (cx, cy), radius, CyberpunkTheme.DARK_CARD, cv2.FILLED)
+    cv2.circle(img, (cx, cy), radius, CyberpunkTheme.CYAN, 2)
+    cv2.circle(img, (cx, cy), radius + 5, status_color, 1)
+
+    # Angle pointer line
+    rad = math.radians(angle_deg)
+    px = int(cx + (radius - 10) * math.cos(rad))
+    py = int(cy + (radius - 10) * math.sin(rad))
+
+    cv2.line(img, (cx, cy), (px, py), status_color, 3)
+    cv2.circle(img, (px, py), 6, CyberpunkTheme.YELLOW, cv2.FILLED)
+
+    # Direction Labels
+    cv2.putText(img, "↺ CCW", (cx - 120, cy + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, CyberpunkTheme.MAGENTA, 2)
+    cv2.putText(img, "↻ CW", (cx + 75, cy + 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, CyberpunkTheme.YELLOW, 2)
+
+    return img
+
+
+def generate_simulated_dial_frame(sim_angle):
+    """
+    Generates a 1280x720 Cyberpunk Neon frame rendering a synthetic rotating hand
+    simulating rotary dial gestures for cloud/Codespaces testing.
     """
     img = np.zeros((720, 1280, 3), dtype=np.uint8)
 
@@ -144,53 +190,29 @@ def generate_simulated_swipe_frame(sim_hand, sim_x):
     for x in range(0, 1280, 40):
         cv2.line(img, (x, 0), (x, 720), (30, 20, 35), 1)
 
-    wrist = (sim_x, 480)
-    palm = (sim_x, 380)
+    wrist = (640, 450)
+    rad = math.radians(sim_angle)
+    hand_len = 160
 
-    landmarks = {
-        0: wrist,
-        1: (sim_x - 40, 430), 2: (sim_x - 60, 370), 3: (sim_x - 70, 320), 4: (sim_x - 80, 280),
-        5: (sim_x - 30, 300), 6: (sim_x - 35, 240), 7: (sim_x - 40, 190), 8: (sim_x - 45, 150),
-        9: (sim_x, 300), 10: (sim_x, 230), 11: (sim_x, 180), 12: (sim_x, 140),
-        13: (sim_x + 30, 310), 14: (sim_x + 35, 250), 15: (sim_x + 40, 200), 16: (sim_x + 45, 160),
-        17: (sim_x + 60, 330), 18: (sim_x + 70, 280), 19: (sim_x + 75, 230), 20: (sim_x + 80, 190)
-    }
+    palm_x = int(640 + hand_len * math.cos(rad))
+    palm_y = int(450 + hand_len * math.sin(rad))
 
-    connections = [
-        (0, 1), (1, 2), (2, 3), (3, 4),
-        (0, 5), (5, 6), (6, 7), (7, 8),
-        (5, 9), (9, 10), (10, 11), (11, 12),
-        (9, 13), (13, 14), (14, 15), (15, 16),
-        (13, 17), (0, 17), (17, 18), (18, 19), (19, 20)
-    ]
+    cv2.line(img, wrist, (palm_x, palm_y), CyberpunkTheme.CYAN, 4)
+    cv2.circle(img, wrist, 12, CyberpunkTheme.MAGENTA, cv2.FILLED)
+    cv2.circle(img, (palm_x, palm_y), 10, CyberpunkTheme.YELLOW, cv2.FILLED)
 
-    hand_color = CyberpunkTheme.MAGENTA if sim_hand == "Left" else CyberpunkTheme.CYAN
-
-    for p1_id, p2_id in connections:
-        pt1, pt2 = landmarks[p1_id], landmarks[p2_id]
-        cv2.line(img, pt1, pt2, hand_color, 2)
-
-    for lm_id, pt in landmarks.items():
-        radius = 7 if lm_id in [4, 8, 12, 16, 20] else 4
-        cv2.circle(img, pt, radius, CyberpunkTheme.YELLOW, cv2.FILLED)
-        cv2.circle(img, pt, radius + 2, CyberpunkTheme.CYAN, 1)
-
-    # Motion Trail Arrow
-    if sim_hand == "Left":
-        cv2.arrowedLine(img, (sim_x - 100, 480), (sim_x + 100, 480), CyberpunkTheme.MAGENTA, 4, tipLength=0.3)
-    else:
-        cv2.arrowedLine(img, (sim_x + 100, 480), (sim_x - 100, 480), CyberpunkTheme.CYAN, 4, tipLength=0.3)
+    draw_rotary_dial_hud(img, wrist, sim_angle, CyberpunkTheme.CYAN)
 
     # Controls Card
     cv2.rectangle(img, (750, 540), (1250, 690), CyberpunkTheme.DARK_CARD, cv2.FILLED)
     cv2.rectangle(img, (750, 540), (1250, 690), CyberpunkTheme.CYAN, 2)
-    cv2.putText(img, "🎬 MEDIA SWIPE CONTROLS:", (765, 575),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.55, CyberpunkTheme.CYAN, 2)
-    cv2.putText(img, " • Press 'A' / Left Arrow  : Left Hand Swipe Right (Seek -10s)", (765, 605),
+    cv2.putText(img, "🎡 ROTARY DIAL SIMULATOR CONTROLS:", (765, 575),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.52, CyberpunkTheme.CYAN, 2)
+    cv2.putText(img, " • Press 'A' / Left Arrow  : Rotate CCW (Seek -10s)", (765, 605),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.MAGENTA, 1)
-    cv2.putText(img, " • Press 'D' / Right Arrow : Right Hand Swipe Left (Seek +10s)", (765, 630),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.CYAN, 1)
-    cv2.putText(img, " • Press 'S'               : Switch Hand [Left 🤚 / Right 🖐️]", (765, 655),
+    cv2.putText(img, " • Press 'D' / Right Arrow : Rotate CW (Seek +10s)", (765, 630),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.YELLOW, 1)
+    cv2.putText(img, " • Press 'S'               : Reset Dial to Neutral", (765, 655),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.WHITE, 1)
 
     return img, wrist
@@ -198,7 +220,7 @@ def generate_simulated_swipe_frame(sim_hand, sim_x):
 
 def run_media_control():
     """
-    Main loop for Real-time Media Seek Forward/Backward Control.
+    Main loop for Real-time Media Seek Forward/Backward Control using Rotary Dial Gesture.
     """
     cam_index = 0
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
@@ -209,30 +231,27 @@ def run_media_control():
     is_simulator_mode = (cap is None)
 
     # Initialize Hand Detector and Universal Media Controller
-    detector = HandDetector(detection_con=0.7, track_con=0.7, max_hands=2)
+    detector = HandDetector(detection_con=0.7, track_con=0.7, max_hands=1)
     media_ctrl = UniversalMediaController()
 
-    # Tracking History for Swipe Velocity Calculation
-    # Stores dict of {hand_label: [history_of_wrist_x]}
-    hand_history = {"Left": [], "Right": []}
-    max_history_len = 6
-    swipe_threshold_px = 120  # Minimum pixel displacement across history to register a swipe
+    # Rotary Thresholds (Degrees relative to neutral -90deg upright)
+    # Neutral range: -115 deg to -65 deg
+    cw_threshold = -55.0    # Tilted Right >= -55 deg -> SEEK FORWARD (+10s)
+    ccw_threshold = -125.0  # Tilted Left <= -125 deg -> SEEK BACKWARD (-10s)
 
-    # Simulator State
-    sim_hand = "Left"
-    sim_x = 300
-    sim_speed = 15
+    # Simulator state
+    sim_angle = -90.0
 
     p_time = time.time()
 
     print("\n=======================================================")
-    print(" 🎬 HandGesture Master Control - Module 3: Media Swipes")
+    print(" 🎬 HandGesture Master Control - Module 3: Rotary Dial Swipes")
     print(" Author: Himesh Rupchandani")
     print(" Theme: CYBERPUNK NEON ⚡")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
-    print(" Rules:")
-    print("  - Left Hand Swipe Right (👈 -> 👉) : SEEK BACKWARD (-10s)")
-    print("  - Right Hand Swipe Left (👉 -> 👈) : SEEK FORWARD (+10s)")
+    print(" Gesture: Rotary Hand Dial Angle")
+    print("  - Rotate Hand Clockwise ↻ (Tilt Right)       : SEEK FORWARD (+10s)")
+    print("  - Rotate Hand Counter-Clockwise ↺ (Tilt Left) : SEEK BACKWARD (-10s)")
     print(" Compatible: YouTube, Netflix, Prime, VLC, Spotify & Web Players")
     print(" Press 'Q' or 'ESC' to Quit")
     print("=======================================================\n")
@@ -254,64 +273,33 @@ def run_media_control():
                 is_simulator_mode = True
 
         if is_simulator_mode:
-            # Animate simulator hand
-            sim_x += sim_speed
-            if sim_x > 980:
-                sim_x = 300
-                if sim_hand == "Left":
-                    media_ctrl.seek_backward()
-                else:
-                    media_ctrl.seek_forward()
-            elif sim_x < 300:
-                sim_x = 980
-
-            img, wrist_pos = generate_simulated_swipe_frame(sim_hand, sim_x)
-
+            img, wrist_pos = generate_simulated_dial_frame(sim_angle)
         else:
             img = cv2.flip(img, 1)
 
             # 1. Find Hands
             img = detector.find_hands(img, draw=True)
+            lm_list, bbox = detector.find_positions(img, draw=False)
 
-            current_frame_hands = []
+            if len(lm_list) != 0:
+                wrist_center = (lm_list[0][1], lm_list[0][2])
+                angle_deg = calculate_hand_angle(lm_list)
 
-            if detector.results and detector.results.multi_hand_landmarks:
-                for h_idx in range(len(detector.results.multi_hand_landmarks)):
-                    hand_label = detector.get_hand_label(h_idx)
-                    lm_list, bbox = detector.find_positions(img, hand_no=h_idx, draw=False)
+                # Determine Rotary Dial Direction
+                status_color = CyberpunkTheme.CYAN
 
-                    if len(lm_list) != 0:
-                        wrist_x = lm_list[0][1]  # Wrist landmark x-coordinate
-                        current_frame_hands.append(hand_label)
+                # CLOCKWISE ROTATION (Tilt Right) -> SEEK FORWARD (+10s)
+                if angle_deg >= cw_threshold:
+                    status_color = CyberpunkTheme.YELLOW
+                    media_ctrl.seek_forward()
 
-                        if hand_label not in hand_history:
-                            hand_history[hand_label] = []
+                # COUNTER-CLOCKWISE ROTATION (Tilt Left) -> SEEK BACKWARD (-10s)
+                elif angle_deg <= ccw_threshold:
+                    status_color = CyberpunkTheme.MAGENTA
+                    media_ctrl.seek_backward()
 
-                        hand_history[hand_label].append(wrist_x)
-
-                        if len(hand_history[hand_label]) > max_history_len:
-                            hand_history[hand_label].pop(0)
-
-                        # Evaluate Swipe Velocity when enough history frames exist
-                        if len(hand_history[hand_label]) >= max_history_len:
-                            start_x = hand_history[hand_label][0]
-                            end_x = hand_history[hand_label][-1]
-                            delta_x = end_x - start_x
-
-                            # LEFT HAND SWIPE RIGHT (start_x < end_x) -> SEEK BACKWARD
-                            if hand_label == "Left" and delta_x > swipe_threshold_px:
-                                if media_ctrl.seek_backward():
-                                    hand_history["Left"] = []  # Clear history after trigger
-
-                            # RIGHT HAND SWIPE LEFT (start_x > end_x) -> SEEK FORWARD
-                            elif hand_label == "Right" and delta_x < -swipe_threshold_px:
-                                if media_ctrl.seek_forward():
-                                    hand_history["Right"] = []  # Clear history after trigger
-
-            # Clear history for hands not present in current frame
-            for h_key in list(hand_history.keys()):
-                if h_key not in current_frame_hands:
-                    hand_history[h_key] = []
+                # Draw Rotary Dial Overlay HUD on hand wrist
+                draw_rotary_dial_hud(img, wrist_center, angle_deg, status_color)
 
         # Draw UI Overlay Components
         # Header Title Card
@@ -319,7 +307,7 @@ def run_media_control():
         cv2.rectangle(img, (20, 20), (620, 95), CyberpunkTheme.CYAN, 2)
         cv2.putText(
             img,
-            "HandGesture Control: Media Swipes",
+            "HandGesture Control: Rotary Dial Swipes",
             (30, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
@@ -328,7 +316,7 @@ def run_media_control():
         )
         cv2.putText(
             img,
-            "Left 🤚 -> Right: SEEK BACKWARD (-10s) | Right 🖐️ -> Left: SEEK FORWARD (+10s)",
+            "Rotate Wrist Right ↻: SEEK FORWARD (+10s) | Left ↺: SEEK BACKWARD (-10s)",
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.4,
@@ -339,14 +327,14 @@ def run_media_control():
         # Status Notification Banner in Center
         banner_text = media_ctrl.last_action_text
         banner_color = media_ctrl.last_action_color
-        cv2.rectangle(img, (340, 620), (940, 680), CyberpunkTheme.DARK_CARD, cv2.FILLED)
-        cv2.rectangle(img, (340, 620), (940, 680), banner_color, 2)
+        cv2.rectangle(img, (320, 620), (960, 680), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (320, 620), (960, 680), banner_color, 2)
         cv2.putText(
             img,
             banner_text,
-            (370, 660),
+            (340, 660),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
+            0.75,
             banner_color,
             2
         )
@@ -373,20 +361,21 @@ def run_media_control():
         )
 
         # Render Frame
-        cv2.imshow("HandGesture Master Control - Media Swipes", img)
+        cv2.imshow("HandGesture Master Control - Rotary Dial Swipes", img)
 
         # Key press handler
         key = cv2.waitKey(30) & 0xFF
         if key == ord('q') or key == 27:
-            print("\nExiting Media Swipes Control Module... Goodbye!")
+            print("\nExiting Rotary Dial Media Control Module... Goodbye!")
             break
-        elif key in [ord('a'), 81, 2] and is_simulator_mode:  # Left Arrow -> Seek Backward
+        elif key in [ord('a'), 81, 2] and is_simulator_mode:  # Left Arrow -> Tilt Left CCW
+            sim_angle = -140.0
             media_ctrl.seek_backward()
-        elif key in [ord('d'), 83, 3] and is_simulator_mode:  # Right Arrow -> Seek Forward
+        elif key in [ord('d'), 83, 3] and is_simulator_mode:  # Right Arrow -> Tilt Right CW
+            sim_angle = -40.0
             media_ctrl.seek_forward()
         elif key == ord('s') and is_simulator_mode:
-            sim_hand = "Right" if sim_hand == "Left" else "Left"
-            sim_speed *= -1
+            sim_angle = -90.0
 
     if cap is not None:
         try:
