@@ -4,7 +4,7 @@
 ![OpenCV](https://img.shields.io/badge/OpenCV-Computer%20Vision-green?style=for-the-badge&logo=opencv)
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-21%20Landmarks-orange?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
-![Status](https://img.shields.io/badge/Build-Pure%20Master%20Controller%20Ready-success?style=for-the-badge)
+![Status](https://img.shields.io/badge/Build-Resizable%20Screen%20Ready-success?style=for-the-badge)
 
 A real-time **AI-Powered Human-Computer Interaction (HCI)** system that converts 21-landmark 3D hand gestures captured via camera into direct OS-level system automation (Volume Control & Brightness Control).
 
@@ -16,6 +16,7 @@ Developed by **Himesh Rupchandani** (CSE AI & DS Student, Rajkot, Gujarat).
 
 - 🎯 **Real-time 21-Landmark Hand Tracking:** Powered by Google MediaPipe & OpenCV.
 - 🎨 **Cyberpunk Neon Visual Theme:** Electric Cyan bones, Hot Pink joints, and Neon Yellow accents.
+- 🖼️ **Resizable Screen Window:** Mouse-drag window edges freely to resize camera screen to ANY custom dimension, or use hotkeys (`1`: Small PIP, `2`: Medium, `3`: Large HD, `F`: Fullscreen).
 - 🚀 **PURE MASTER CONTROLLER:** Runs Volume and Brightness Control simultaneously in a single camera feed with zero gesture conflicts!
 - 🔊 **Volume Control:** Right Hand Pinch/Spread adjusts OS volume (Right Green Bar 🔊).
 - ☀️ **Brightness Control:** Left Hand Pinch/Spread adjusts screen brightness (Left Gold Bar ☀️).
@@ -24,12 +25,17 @@ Developed by **Himesh Rupchandani** (CSE AI & DS Student, Rajkot, Gujarat).
 
 ---
 
-## 🖐️ Gesture Control Mapping
+## 🖐️ Gesture Control & Screen Resizing Guide
 
-| Feature | Hand Assigned | Gesture Mechanism | Action | Universal Support |
-| :--- | :--- | :--- | :--- | :--- |
-| **Brightness Control** | **Left Hand** 🤚 | Thumb + Index Pinch/Spread | Brightness 0% $\leftrightarrow$ 100% | Laptop / Desktop Screens |
-| **Volume Control** | **Right Hand** 🖐️ | Thumb + Index Pinch/Spread | Volume 0% $\leftrightarrow$ 100% | Windows / Mac / Linux System Audio |
+| Feature | Hand / Hotkey | Action / Shortcut | Universal Support |
+| :--- | :--- | :--- | :--- |
+| **Brightness Control** | **Left Hand** 🤚 | Thumb + Index Pinch/Spread | Laptop / Desktop Screens |
+| **Volume Control** | **Right Hand** 🖐️ | Thumb + Index Pinch/Spread | Windows / Mac / Linux System Audio |
+| **Drag Window Borders** | **Mouse Drag** | Freehand Screen Window Resizing | Custom Screen Dimensions |
+| **Small PIP Screen** | **`1` Key** | $640 \times 360$ Compact Window | Corner Floating View |
+| **Medium Screen** | **`2` Key** | $960 \times 540$ Balanced Window | Multitasking View |
+| **HD Large Screen** | **`3` Key** | $1280 \times 720$ High-Def Window | Full Detail View |
+| **Fullscreen Mode** | **`F` Key** | Toggle Fullscreen Mode | Immersive Camera View |
 
 ---
 
@@ -48,7 +54,7 @@ HandGesture-Master-Control/
     ├── hand_tracker.py       ← Reusable MediaPipe Hand Detector Module (Cyberpunk Theme)
     ├── volume_control.py     ← Module 1: Volume Controller (Right Hand)
     ├── brightness_control.py ← Module 2: Brightness Controller (Left Hand)
-    └── master_control.py     ← PURE MASTER CONTROLLER (Volume + Brightness)
+    └── master_control.py     ← PURE MASTER CONTROLLER (Volume + Brightness + Resizable Screen!)
 ```
 
 ---
@@ -92,4 +98,4 @@ See [`docs/CV_BULLETS.md`](docs/CV_BULLETS.md) for pre-formatted ATS bullet poin
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the Full MIT License.

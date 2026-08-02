@@ -1,10 +1,6 @@
 """
-Volume Control Module using Hand Gestures.
+Volume Control Module using Hand Gestures (Resizable Window Edition).
 Controls system volume based on distance between Thumb Tip (Landmark 4) and Index Tip (Landmark 8).
-
-Features Cyberpunk Neon Theme HUD & Dual Execution Modes:
-  1. Live Webcam Mode (Automatic when hardware camera is present)
-  2. Interactive Hand Simulator Mode (Automatic fallback for GitHub Codespaces / Cloud VMs / Camera errors)
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
@@ -267,8 +263,7 @@ def generate_simulated_hand_frame(sim_distance, auto_mode=True):
 
 def run_volume_control():
     """
-    Main loop for Real-time Hand Gesture Volume Control.
-    Runs seamlessly with hardware camera or interactive simulator mode.
+    Main loop for Real-time Hand Gesture Volume Control with resizable screen.
     """
     cam_index = 0
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
@@ -281,6 +276,12 @@ def run_volume_control():
     # Initialize Hand Detector and Audio Controller
     detector = HandDetector(detection_con=0.7, track_con=0.7, max_hands=1)
     audio_ctrl = SystemAudioController()
+
+    # Window Setup: Resizable WINDOW_NORMAL
+    window_title = "HandGesture Master Control - Volume Control"
+    cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(window_title, 1280, 720)
+    is_fullscreen = False
 
     # Gesture Range Configuration
     min_dist = 20    # Minimum distance between thumb & index tip (Pinch close -> 0%)
@@ -304,6 +305,10 @@ def run_volume_control():
     print(" Gesture: Thumb Tip (4) <---> Index Tip (8)")
     print("  - Pinch close = 0% Volume")
     print("  - Spread far   = 100% Volume")
+    print(" Window Controls:")
+    print("  - Drag Window Edges freely with mouse to resize")
+    print("  - Press '1' : Small (640x360) | '2' : Medium (960x540) | '3' : HD (1280x720)")
+    print("  - Press 'F' : Toggle Fullscreen Mode")
     print(" Press 'Q' or 'ESC' to Quit")
     print("=======================================================\n")
 
@@ -422,13 +427,26 @@ def run_volume_control():
         )
 
         # Render Frame
-        cv2.imshow("HandGesture Master Control - Volume Control", img)
+        cv2.imshow(window_title, img)
 
         # Key press handler
         key = cv2.waitKey(30) & 0xFF
         if key == ord('q') or key == 27:
             print("\nExiting Volume Control Module... Goodbye!")
             break
+        elif key == ord('1'):
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(window_title, 640, 360)
+        elif key == ord('2'):
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(window_title, 960, 540)
+        elif key == ord('3'):
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(window_title, 1280, 720)
+        elif key == ord('f') or key == ord('F'):
+            is_fullscreen = not is_fullscreen
+            prop = cv2.WINDOW_FULLSCREEN if is_fullscreen else cv2.WINDOW_NORMAL
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, prop)
         elif key in [ord('a'), 81, 2] and is_simulator_mode:
             auto_animate = False
             sim_dist = max(15, sim_dist - 10)

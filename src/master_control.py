@@ -1,6 +1,13 @@
 """
-HandGesture Master Controller (Pure Volume + Brightness Edition).
-Combines Right Hand Volume Control and Left Hand Brightness Control into ONE clean, rock-solid camera feed!
+HandGesture Master Controller (Pure Volume + Brightness Edition with Resizable Window).
+Combines Right Hand Volume Control and Left Hand Brightness Control into ONE clean, resizable camera feed!
+
+Window Screen Resizing Features:
+  - Drag Window Edges/Corners freely to resize the camera screen to ANY custom dimension!
+  - Press '1' : Compact PIP Window (640 x 360)
+  - Press '2' : Medium Window (960 x 540)
+  - Press '3' : HD Large Window (1280 x 720)
+  - Press 'F' : Toggle Fullscreen Mode
 
 Clean Gesture Mapping:
   🖐️ Right Hand Pinch/Spread : Master Volume Control (Right Green Bar 🔊)
@@ -32,7 +39,7 @@ except ImportError:
 
 def run_master_control():
     """
-    Main loop combining Volume Control and Brightness Control.
+    Main loop combining Volume Control and Brightness Control with resizable screen window.
     """
     cam_index = 0
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
@@ -46,6 +53,12 @@ def run_master_control():
     detector = HandDetector(detection_con=0.7, track_con=0.7, max_hands=2)
     audio_ctrl = SystemAudioController()
     bright_ctrl = SystemBrightnessController()
+
+    # Window Setup: Enable resizable window mode (WINDOW_NORMAL)
+    window_title = "HandGesture Master Control - Resizable Screen"
+    cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(window_title, 1280, 720)
+    is_fullscreen = False
 
     # Gesture Range Configuration
     min_dist = 20
@@ -64,10 +77,14 @@ def run_master_control():
     auto_animate = True
 
     print("\n=======================================================")
-    print(" 🚀 HandGesture Master Control - PURE MASTER CONTROLLER")
+    print(" 🚀 HandGesture Master Control - RESIZABLE SCREEN EDITION")
     print(" Author: Himesh Rupchandani")
     print(" Theme: CYBERPUNK NEON ⚡")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
+    print(" Window Controls:")
+    print("  - Drag Window Edges freely with mouse to resize")
+    print("  - Press '1' : Small (640x360) | '2' : Medium (960x540) | '3' : HD (1280x720)")
+    print("  - Press 'F' : Toggle Fullscreen Mode")
     print(" Gesture Rules:")
     print("  🖐️ Right Hand Pinch/Spread : Master Volume Control (Right Green Bar)")
     print("  🤚 Left Hand Pinch/Spread  : Screen Brightness Control (Left Gold Bar)")
@@ -166,8 +183,8 @@ def run_master_control():
         cv2.putText(img, "🔊 VOL", (1175, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
 
         # Header Title Card
-        cv2.rectangle(img, (20, 20), (620, 95), CyberpunkTheme.DARK_CARD, cv2.FILLED)
-        cv2.rectangle(img, (20, 20), (620, 95), CyberpunkTheme.CYAN, 2)
+        cv2.rectangle(img, (20, 20), (660, 95), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (20, 20), (660, 95), CyberpunkTheme.CYAN, 2)
         cv2.putText(
             img,
             "HandGesture Master Control System",
@@ -179,10 +196,10 @@ def run_master_control():
         )
         cv2.putText(
             img,
-            f"Left Hand 🤚: Brightness {int(bright_per)}% | Right Hand 🖐️: Volume {int(vol_per)}%",
+            f"Left 🤚: Bright {int(bright_per)}% | Right 🖐️: Vol {int(vol_per)}% | Resize: '1' '2' '3' 'F'",
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
+            0.42,
             CyberpunkTheme.CYAN,
             1
         )
@@ -200,14 +217,30 @@ def run_master_control():
 
         cv2.putText(img, f"FPS: {int(fps)}", (1150, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, CyberpunkTheme.YELLOW, 2)
 
-        # Render Frame
-        cv2.imshow("HandGesture Master Control - Pure Volume & Brightness", img)
+        # Render Frame to Resizable Window
+        cv2.imshow(window_title, img)
 
-        # Key press handler
+        # Key press handler for Window Resizing & Control
         key = cv2.waitKey(30) & 0xFF
         if key == ord('q') or key == 27:
             print("\nExiting Master Controller... Goodbye!")
             break
+        elif key == ord('1'):  # Resize to Compact PIP (640x360)
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(window_title, 640, 360)
+            is_fullscreen = False
+        elif key == ord('2'):  # Resize to Medium (960x540)
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(window_title, 960, 540)
+            is_fullscreen = False
+        elif key == ord('3'):  # Resize to Large HD (1280x720)
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(window_title, 1280, 720)
+            is_fullscreen = False
+        elif key == ord('f') or key == ord('F'):  # Toggle Fullscreen
+            is_fullscreen = not is_fullscreen
+            prop = cv2.WINDOW_FULLSCREEN if is_fullscreen else cv2.WINDOW_NORMAL
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, prop)
         elif key == ord('s') and is_simulator_mode:
             auto_animate = not auto_animate
 

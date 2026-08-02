@@ -1,10 +1,6 @@
 """
-Brightness Control Module using Hand Gestures (Prompt 2).
+Brightness Control Module using Hand Gestures (Resizable Window Edition).
 Controls screen brightness using Left Hand Thumb-to-Index distance gestures.
-
-Features Cyberpunk Neon Theme HUD & Dual Execution Modes:
-  1. Live Webcam Mode (Automatic when hardware camera is present)
-  2. Interactive Hand Simulator Mode (Automatic fallback for GitHub Codespaces / Cloud VMs / Camera errors)
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
@@ -178,18 +174,18 @@ def generate_simulated_hand_frame(sim_distance, auto_mode=True):
     cv2.putText(img, "☀️ CYBERPUNK BRIGHTNESS CONTROLS:", (765, 575),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.55, CyberpunkTheme.YELLOW, 2)
     cv2.putText(img, " • Press 'A' / Left Arrow  : Pinch (Dim -> 0%)", (765, 605),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, CyberpunkTheme.WHITE, 1)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.WHITE, 1)
     cv2.putText(img, " • Press 'D' / Right Arrow : Spread (Bright -> 100%)", (765, 630),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, CyberpunkTheme.WHITE, 1)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.WHITE, 1)
     cv2.putText(img, f" • Press 'S' : Toggle Auto-Animate [{ 'ON' if auto_mode else 'OFF' }]", (765, 655),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, CyberpunkTheme.YELLOW if auto_mode else (180, 180, 180), 1)
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.YELLOW if auto_mode else (180, 180, 180), 1)
 
     return img, sim_distance, (thumb_x, thumb_y), (index_x, index_y), (cx, cy)
 
 
 def run_brightness_control():
     """
-    Main loop for Real-time Left Hand Gesture Brightness Control.
+    Main loop for Real-time Left Hand Gesture Brightness Control with resizable window.
     """
     cam_index = 0
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
@@ -202,6 +198,12 @@ def run_brightness_control():
     # Initialize Hand Detector and Brightness Controller
     detector = HandDetector(detection_con=0.7, track_con=0.7, max_hands=2)
     bright_ctrl = SystemBrightnessController()
+
+    # Window Setup: Resizable WINDOW_NORMAL
+    window_title = "HandGesture Master Control - Brightness Control"
+    cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(window_title, 1280, 720)
+    is_fullscreen = False
 
     # Gesture Range Configuration
     min_dist = 20    # Pinch close -> 0% Brightness
@@ -224,8 +226,10 @@ def run_brightness_control():
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
     print(" Hand Assigned: LEFT HAND 🤚")
     print(" Gesture: Left Thumb Tip (4) <---> Left Index Tip (8)")
-    print("  - Pinch close = Dim Screen (0%)")
-    print("  - Spread far   = Bright Screen (100%)")
+    print(" Window Controls:")
+    print("  - Drag Window Edges freely with mouse to resize")
+    print("  - Press '1' : Small (640x360) | '2' : Medium (960x540) | '3' : HD (1280x720)")
+    print("  - Press 'F' : Toggle Fullscreen Mode")
     print(" Press 'Q' or 'ESC' to Quit")
     print("=======================================================\n")
 
@@ -351,13 +355,26 @@ def run_brightness_control():
         )
 
         # Render Frame
-        cv2.imshow("HandGesture Master Control - Brightness Control", img)
+        cv2.imshow(window_title, img)
 
         # Key press handler
         key = cv2.waitKey(30) & 0xFF
         if key == ord('q') or key == 27:
             print("\nExiting Brightness Control Module... Goodbye!")
             break
+        elif key == ord('1'):
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(window_title, 640, 360)
+        elif key == ord('2'):
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(window_title, 960, 540)
+        elif key == ord('3'):
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(window_title, 1280, 720)
+        elif key == ord('f') or key == ord('F'):
+            is_fullscreen = not is_fullscreen
+            prop = cv2.WINDOW_FULLSCREEN if is_fullscreen else cv2.WINDOW_NORMAL
+            cv2.setWindowProperty(window_title, cv2.WND_PROP_FULLSCREEN, prop)
         elif key in [ord('a'), 81, 2] and is_simulator_mode:
             auto_animate = False
             sim_dist = max(15, sim_dist - 10)
