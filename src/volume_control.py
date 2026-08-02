@@ -28,8 +28,8 @@ except ImportError:
 
 class SystemAudioController:
     """
-    Cross-platform system audio volume controller supporting Windows (pycaw),
-    macOS (osascript), Linux (amixer/pactl), and safe mock fallback.
+    Cross-platform system audio volume controller supporting Windows (pycaw + CoInitialize),
+    macOS (osascript), Linux (amixer/pactl), and safe fallback.
     """
 
     def __init__(self):
@@ -40,53 +40,79 @@ class SystemAudioController:
         self.current_vol_pct = 50
 
         if self.os_type == "Windows":
+            # 1. Initialize COM library for Windows thread
+            try:
+                import comtypes
+                comtypes.CoInitialize()
+            except Exception:
+                pass
+
+            # 2. Connect to Pycaw Windows Core Audio Endpoint
             try:
                 from comtypes import CLSCTX_ALL
                 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
                 devices = AudioUtilities.GetSpeakers()
-                interface = devices.Activate(
-                    IAudioEndpointVolume._iid_, CLSCTX_ALL, None
-                )
-                self.volume_interface = interface.QueryInterface(
-                    IAudioEndpointVolume
-                )
-                vol_range = self.volume_interface.GetVolumeRange()
-                self.min_vol = vol_range[0]
-                self.max_vol = vol_range[1]
-                print(f"[AudioController] Windows Pycaw initialized. Vol range: {self.min_vol} to {self.max_vol} dB")
+                if devices:
+                    interface = devices.Activate(
+                        IAudioEndpointVolume._iid_, CLSCTX_ALL, None
+                    )
+                    self.volume_interface = interface.QueryInterface(
+                        IAudioEndpointVolume
+                    )
+                    vol_range = self.volume_interface.GetVolumeRange()
+                    self.min_vol = vol_range[0]
+                    self.max_vol = vol_range[1]
+                    
+                    # Fetch initial Windows volume slider level
+                    cur_scalar = self.volume_interface.GetMasterVolumeLevelScalar()
+                    self.current_vol_pct = int(cur_scalar * 100)
+                    print(f"[AudioController] ✅ Windows Pycaw Master Audio connected! Current Laptop Volume: {self.current_vol_pct}%")
             except Exception as e:
-                print(f"[AudioController] Pycaw warning: {e}. Using virtual audio controller.")
+                print(f"[AudioController] ⚠️ Pycaw initialization info: {e}")
                 self.volume_interface = None
-        else:
-            print(f"[AudioController] Operating System: {self.os_type}. Using cross-platform audio interface.")
 
-    def set_volume_db(self, vol_db):
-        """Set volume in decibels (Windows Pycaw)."""
-        if self.volume_interface:
-            try:
-                self.volume_interface.SetMasterVolumeLevel(float(vol_db), None)
-            except Exception:
-                pass
+            if self.volume_interface is None:
+                print("[AudioController] Pycaw audio device unavailable or restricted.")
+        else:
+            print(f"[AudioController] Operating System: {self.os_type}. Initialized system audio control.")
 
     def set_volume_pct(self, vol_pct):
-        """Set volume as percentage (0 to 100)."""
-        self.current_vol_pct = int(np.clip(vol_pct, 0, 100))
+        """
+        Set Windows / OS master system volume directly (0% to 100%).
+        """
+        new_vol = int(np.clip(vol_pct, 0, 100))
+        self.current_vol_pct = new_vol
 
-        if self.os_type == "Windows" and self.volume_interface:
-            vol_db = np.interp(self.current_vol_pct, [0, 100], [self.min_vol, self.max_vol])
-            self.set_volume_db(vol_db)
+        if self.os_type == "Windows":
+            if self.volume_interface is not None:
+                try:
+                    # SetMasterVolumeLevelScalar directly controls Windows volume slider (0.0 to 1.0)
+                    scalar_val = float(self.current_vol_pct) / 100.0
+                    self.volume_interface.SetMasterVolumeLevelScalar(scalar_val, None)
+                    return
+                except Exception as e:
+                    # Retry with CoInitialize if thread COM state changed
+                    try:
+                        import comtypes
+                        comtypes.CoInitialize()
+                        scalar_val = float(self.current_vol_pct) / 100.0
+                        self.volume_interface.SetMasterVolumeLevelScalar(scalar_val, None)
+                    except Exception as err:
+                        print(f"[AudioController] Volume update error: {err}")
+
         elif self.os_type == "Darwin":  # macOS
             os.system(f"osascript -e 'set volume output volume {self.current_vol_pct}' 2>/dev/null")
         elif self.os_type == "Linux":
             os.system(f"amixer -q sset Master {self.current_vol_pct}% 2>/dev/null")
+            os.system(f"pactl set-sink-volume @DEFAULT_SINK@ {self.current_vol_pct}% 2>/dev/null")
 
     def get_volume_pct(self):
         """Get current volume percentage."""
-        if self.os_type == "Windows" and self.volume_interface:
+        if self.os_type == "Windows" and self.volume_interface is not None:
             try:
-                current_db = self.volume_interface.GetMasterVolumeLevel()
-                return int(np.interp(current_db, [self.min_vol, self.max_vol], [0, 100]))
+                cur_scalar = self.volume_interface.GetMasterVolumeLevelScalar()
+                return int(cur_scalar * 100)
             except Exception:
                 return self.current_vol_pct
         return self.current_vol_pct
@@ -101,7 +127,6 @@ def initialize_camera(requested_idx=0):
     is_windows = (platform.system() == "Windows")
 
     for idx in indices_to_try:
-        # Use CAP_DSHOW on Windows first to bypass MSMF buffer assertion crashes
         backends = [cv2.CAP_DSHOW, cv2.CAP_ANY] if is_windows else [cv2.CAP_ANY]
 
         for backend in backends:
@@ -244,7 +269,7 @@ def run_volume_control():
     # UI Smoothness variables
     vol_bar = 400
     vol_per = 0
-    smoothness = 5
+    smoothness = 2
     p_time = time.time()
 
     print("\n=======================================================")
@@ -285,7 +310,9 @@ def run_volume_control():
             # Map simulated distance to volume percentage
             vol_per = np.interp(length, [min_dist, max_dist], [0, 100])
             vol_bar = np.interp(length, [min_dist, max_dist], [400, 150])
-            vol_per = smoothness * round(vol_per / smoothness)
+            vol_per = int(np.clip(vol_per, 0, 100))
+
+            # Directly update OS Volume
             audio_ctrl.set_volume_pct(vol_per)
 
             if length < 25:
@@ -308,9 +335,9 @@ def run_volume_control():
                 # Convert distance to volume range
                 vol_per = np.interp(length, [min_dist, max_dist], [0, 100])
                 vol_bar = np.interp(length, [min_dist, max_dist], [400, 150])
-                vol_per = smoothness * round(vol_per / smoothness)
+                vol_per = int(np.clip(vol_per, 0, 100))
 
-                # Set System Volume
+                # Set Windows / OS Master System Volume directly
                 audio_ctrl.set_volume_pct(vol_per)
 
                 if length < 25:
