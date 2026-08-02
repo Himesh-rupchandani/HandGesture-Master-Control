@@ -6,7 +6,7 @@
 ![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Build-Prompt%203%20Completed-success?style=for-the-badge)
 
-A real-time **AI-Powered Human-Computer Interaction (HCI)** system that converts 21-landmark 3D hand gestures captured via camera into direct OS-level system automation (Volume Control, Brightness Control, Universal Rotary Dial Media Swipes, Media Play/Pause).
+A real-time **AI-Powered Human-Computer Interaction (HCI)** system that converts 21-landmark 3D hand gestures captured via camera into direct OS-level system automation (Volume Control, Brightness Control, Easy Media Seeking, Media Play/Pause).
 
 Developed by **Himesh Rupchandani** (CSE AI & DS Student, Rajkot, Gujarat).
 
@@ -18,7 +18,8 @@ Developed by **Himesh Rupchandani** (CSE AI & DS Student, Rajkot, Gujarat).
 - 🎨 **Cyberpunk Neon Visual Theme:** Electric Cyan bones, Hot Pink joints, and Neon Yellow accents.
 - 🔊 **Volume Control (Prompt 1):** Right Hand Pinch/Spread adjusts OS volume (Right HUD).
 - ☀️ **Brightness Control (Prompt 2):** Left Hand Pinch/Spread adjusts screen brightness (Left HUD).
-- 🎡 **Rotary Dial Media Seeking (Prompt 3):** Rotate wrist Clockwise ↻ $\rightarrow$ Seek Forward (+10s); Counter-Clockwise ↺ $\rightarrow$ Seek Backward (-10s) across YouTube, Netflix, Prime, VLC, Spotify & Browsers.
+- 🎬 **Easy Finger Media Seeking (Prompt 3):** Show 1 Finger ☝️ $\rightarrow$ Seek Backward (-10s); Show 2 Fingers ✌️ $\rightarrow$ Seek Forward (+10s) across YouTube, Netflix, Prime, VLC, Spotify & Browsers.
+- 💻 **Windows Hardware Keybd_Event Injection:** Controls background media players even when the OpenCV camera window is active!
 - 🚀 **Dual Master Controller:** Control Volume and Brightness simultaneously in a single camera window!
 - 🎮 **Dual Execution Mode:** Runs with live hardware webcam or interactive 3D hand simulator fallback.
 - ⚡ **Low Latency Performance:** Runs smoothly at 30+ FPS on standard laptop webcams.
@@ -31,8 +32,8 @@ Developed by **Himesh Rupchandani** (CSE AI & DS Student, Rajkot, Gujarat).
 | :--- | :--- | :--- | :--- | :--- |
 | **Brightness Control** | **Left Hand** 🤚 | Thumb + Index Pinch/Spread | Brightness 0% $\leftrightarrow$ 100% | Laptop / Desktop Screens |
 | **Volume Control** | **Right Hand** 🖐️ | Thumb + Index Pinch/Spread | Volume 0% $\leftrightarrow$ 100% | Windows / Mac / Linux System Audio |
-| **Media Seeking** | **Either Hand** 🎡 | Rotate Hand Clockwise (↻) | **SEEK FORWARD (+10s)** | YouTube, Netflix, Prime, VLC, Web Players |
-| **Media Seeking** | **Either Hand** 🎡 | Rotate Hand Counter-Clockwise (↺) | **SEEK BACKWARD (-10s)** | YouTube, Netflix, Prime, VLC, Web Players |
+| **Media Seeking** | **Either Hand** ☝️ | Show 1 Finger (Index) | **SEEK BACKWARD (-10s)** | YouTube, Netflix, Prime, VLC, Web Players |
+| **Media Seeking** | **Either Hand** ✌️ | Show 2 Fingers (Peace Sign) | **SEEK FORWARD (+10s)** | YouTube, Netflix, Prime, VLC, Web Players |
 
 ---
 
@@ -51,7 +52,7 @@ HandGesture-Master-Control/
     ├── hand_tracker.py       ← Reusable MediaPipe Hand Detector Module (Cyberpunk Theme)
     ├── volume_control.py     ← Prompt 1: Volume Controller (Right Hand)
     ├── brightness_control.py ← Prompt 2: Brightness Controller (Left Hand)
-    ├── media_control.py      ← Prompt 3: Rotary Dial Media Swipes (YouTube, Netflix, VLC)
+    ├── media_control.py      ← Prompt 3: Easy Finger Count Media Seeking (YouTube, Netflix, VLC)
     └── master_control.py     ← Dual Master Controller (Runs Volume & Brightness Together!)
 ```
 
@@ -72,7 +73,7 @@ pip install -r requirements.txt
 
 ### 3. Run Modules
 
-**Run Rotary Dial Media Swipes (Prompt 3 - YouTube, Netflix, VLC, etc.):**
+**Run Easy Media Seeking (Prompt 3 - YouTube, Netflix, VLC, etc.):**
 ```bash
 python src/media_control.py
 ```
@@ -98,7 +99,7 @@ python src/volume_control.py
 
 - [x] **Prompt 1: Volume Control** ✅ *(Right Hand Pinch & Spread)*
 - [x] **Prompt 2: Brightness Control** ✅ *(Left Hand Pinch & Spread)*
-- [x] **Prompt 3: Rotary Dial Media Swipes** ✅ *(Clockwise -> Seek +10s; Counter-Clockwise -> Seek -10s)*
+- [x] **Prompt 3: Easy Finger Media Seeking** ✅ *(1 Finger -> Seek -10s; 2 Fingers -> Seek +10s)*
 - [ ] **Prompt 4: Play/Pause & Mute** 🔜 *(Fist / Open Palm detection)*
 - [ ] **Prompt 5: Dual-Hand System Logic** 🔜 *(Right Hand = Volume, Left Hand = Brightness)*
 - [ ] **Prompt 6: Combined Master Controller** 🔜 *(Unified System Tray / GUI app)*
