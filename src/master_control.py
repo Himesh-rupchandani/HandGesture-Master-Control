@@ -1,13 +1,13 @@
 """
-Ultimate All-In-One HandGesture Master Controller.
+Ultimate All-In-One HandGesture Master Controller (Conflict-Free HCI Edition).
 Combines Volume Control, Brightness Control, Media Seeking (-10s / +10s), and Play/Pause into ONE unified camera feed!
 
-Gesture Control Reference:
-  🖐️ Right Hand Pinch/Spread : System Master Volume Control (Right Side Green HUD Bar 🔊)
-  🤚 Left Hand Pinch/Spread  : Screen Brightness Control (Left Side Gold HUD Bar ☀️)
-  ☝️ 1 Finger Extended (Index) : 1 FINGER BACK <- SEEK BACKWARD (-10s)
-  ✌️ 2 Fingers Extended (Peace): 2 FINGERS FORWARD -> SEEK FORWARD (+10s)
-  ✊ Fist (0 Fingers)          : FIST ✊ -> PLAY / PAUSE TOGGLE
+Conflict-Free Gesture Mapping:
+  🖐️ Right Hand Pinch/Spread : Master Volume Control ONLY (Right Side Green HUD Bar 🔊) - No seeking conflicts!
+  🤚 Left Hand (Thumb Open)  : Screen Brightness Control (Left Side Gold HUD Bar ☀️)
+  ☝️ Left Hand (Thumb Folded) + 1 Finger : 1 FINGER BACK <- SEEK BACKWARD (-10s)
+  ✌️ Left Hand (Thumb Folded) + 2 Fingers: 2 FINGERS FORWARD -> SEEK FORWARD (+10s)
+  ✊ Fist (0 Fingers)         : FIST ✊ -> PLAY / PAUSE TOGGLE
 
 Compatible with YouTube (Opera GX, Chrome, Edge), Netflix, Prime Video, VLC, and Spotify.
 
@@ -44,7 +44,7 @@ except ImportError:
 
 def run_master_control():
     """
-    Main loop combining All-In-One Hand Gesture Automation.
+    Main loop combining All-In-One Hand Gesture Automation without gesture conflicts.
     """
     cam_index = 0
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
@@ -83,13 +83,13 @@ def run_master_control():
     print("\n=======================================================")
     print(" 🚀 HandGesture Master Control - ALL-IN-ONE MASTER CONTROLLER")
     print(" Author: Himesh Rupchandani")
-    print(" Theme: CYBERPUNK NEON ⚡")
+    print(" Theme: CYBERPUNK NEON ⚡ (Conflict-Free Edition)")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
     print(" Gesture Rules:")
     print("  🖐️ Right Hand Pinch/Spread : Master Volume Control (Right Green Bar)")
-    print("  🤚 Left Hand Pinch/Spread  : Screen Brightness Control (Left Gold Bar)")
-    print("  ☝️ 1 Finger Extended       : 1 FINGER BACK <- SEEK BACKWARD (-10s)")
-    print("  ✌️ 2 Fingers Extended      : 2 FINGERS FORWARD -> SEEK FORWARD (+10s)")
+    print("  🤚 Left Hand (Thumb Open)  : Screen Brightness Control (Left Gold Bar)")
+    print("  ☝️ Left Hand (Thumb In) + 1 : 1 FINGER BACK <- SEEK BACKWARD (-10s)")
+    print("  ✌️ Left Hand (Thumb In) + 2 : 2 FINGERS FORWARD -> SEEK FORWARD (+10s)")
     print("  ✊ Fist (0 Fingers)        : FIST ✊ -> PLAY / PAUSE TOGGLE")
     print(" Press 'Q' or 'ESC' to Quit")
     print("=======================================================\n")
@@ -147,24 +147,57 @@ def run_master_control():
                         fingers = detector.fingers_up(hand_no=h_idx)
                         num_fingers = sum(fingers)
 
-                        # Check Finger Count Seek & Play/Pause Gestures
-                        # ☝️ 1 FINGER EXTENDED -> SEEK BACKWARD (-10s)
-                        if num_fingers == 1 and fingers[1] == 1:
-                            media_ctrl.seek_backward()
+                        # Calculate Thumb-Index Distance for Pinch/Spread
+                        length, img, line_info = detector.find_distance(4, 8, img, draw=True, r=10, t=3)
+                        cx, cy = line_info[4], line_info[5]
 
-                        # ✌️ 2 FINGERS EXTENDED -> SEEK FORWARD (+10s)
-                        elif num_fingers == 2 and fingers[1] == 1 and fingers[2] == 1:
-                            media_ctrl.seek_forward()
+                        # RIGHT HAND -> Volume Control ONLY (Zero Seeking Conflicts!)
+                        if hand_label == "Right":
+                            vol_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
+                            vol_bar = np.interp(length, [min_dist, max_dist], [400, 150])
+                            audio_ctrl.set_volume_pct(vol_per)
 
-                        # ✊ FIST (0 FINGERS) -> PLAY / PAUSE TOGGLE
-                        elif num_fingers == 0:
+                            if length < 25:
+                                cv2.circle(img, (cx, cy), 12, CyberpunkTheme.MAGENTA, cv2.FILLED)
+                                cv2.putText(img, "MUTED", (cx - 35, cy - 25),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
+
+                        # LEFT HAND -> Brightness Control OR Media Seeking
+                        elif hand_label in ["Left", "Unknown"]:
+                            # If Thumb is FOLDED IN (fingers[0] == 0) and Ring/Pinky closed -> SEEK MODE
+                            if fingers[0] == 0 and fingers[3] == 0 and fingers[4] == 0:
+                                # ☝️ 1 Finger (Index) -> SEEK BACKWARD (-10s)
+                                if fingers[1] == 1 and fingers[2] == 0:
+                                    media_ctrl.seek_backward()
+                                    cv2.putText(img, "1 FINGER BACK <- SEEK BACKWARD", (lm_list[8][1] - 130, lm_list[8][2] - 30),
+                                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, CyberpunkTheme.MAGENTA, 2)
+
+                                # ✌️ 2 Fingers (Peace) -> SEEK FORWARD (+10s)
+                                elif fingers[1] == 1 and fingers[2] == 1:
+                                    media_ctrl.seek_forward()
+                                    cv2.putText(img, "2 FINGERS FORWARD -> SEEK FORWARD", (lm_list[8][1] - 130, lm_list[8][2] - 30),
+                                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, CyberpunkTheme.YELLOW, 2)
+
+                            else:
+                                # Thumb is OPEN -> Brightness Control
+                                bright_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
+                                bright_bar = np.interp(length, [min_dist, max_dist], [400, 150])
+                                bright_ctrl.set_brightness_pct(bright_per)
+
+                                if length < 25:
+                                    cv2.circle(img, (cx, cy), 12, CyberpunkTheme.YELLOW, cv2.FILLED)
+                                    cv2.putText(img, "DIM", (cx - 25, cy - 25),
+                                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.YELLOW, 2)
+
+                        # ✊ FIST (0 FINGERS EXTENDED) -> PLAY / PAUSE TOGGLE
+                        if num_fingers == 0:
                             now = time.time()
                             if now - last_playpause_time >= playpause_cooldown:
                                 try:
                                     if platform.system() == "Windows":
                                         import ctypes
                                         VK_SPACE = 0x20
-                                        VK_K = 0x4B  # YouTube Play/Pause Hotkey
+                                        VK_K = 0x4B
                                         user32 = ctypes.windll.user32
                                         user32.keybd_event(VK_K, 0, 0, 0)
                                         user32.keybd_event(VK_K, 0, 2, 0)
@@ -179,32 +212,6 @@ def run_master_control():
                                 media_ctrl.last_action_text = "FIST ✊ -> PLAY / PAUSE TOGGLE"
                                 media_ctrl.last_action_color = CyberpunkTheme.YELLOW
                                 print("[MasterController] ✊ Fist Detected -> Play/Pause Toggled")
-
-                        # Continuous Distance Controls (Volume & Brightness)
-                        length, img, line_info = detector.find_distance(4, 8, img, draw=True, r=10, t=3)
-                        cx, cy = line_info[4], line_info[5]
-
-                        # RIGHT HAND -> Volume Control (Right Side HUD)
-                        if hand_label == "Right":
-                            vol_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
-                            vol_bar = np.interp(length, [min_dist, max_dist], [400, 150])
-                            audio_ctrl.set_volume_pct(vol_per)
-
-                            if length < 25:
-                                cv2.circle(img, (cx, cy), 12, CyberpunkTheme.MAGENTA, cv2.FILLED)
-                                cv2.putText(img, "MUTED", (cx - 35, cy - 25),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
-
-                        # LEFT HAND -> Brightness Control (Left Side HUD)
-                        elif hand_label in ["Left", "Unknown"]:
-                            bright_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
-                            bright_bar = np.interp(length, [min_dist, max_dist], [400, 150])
-                            bright_ctrl.set_brightness_pct(bright_per)
-
-                            if length < 25:
-                                cv2.circle(img, (cx, cy), 12, CyberpunkTheme.YELLOW, cv2.FILLED)
-                                cv2.putText(img, "DIM", (cx - 25, cy - 25),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.YELLOW, 2)
 
         # Draw UI Overlay Components
         # Left Side: Cyberpunk Gold Brightness Bar ☀️
@@ -235,7 +242,7 @@ def run_master_control():
         )
         cv2.putText(
             img,
-            f"Left 🤚: Bright {int(bright_per)}% | Right 🖐️: Vol {int(vol_per)}% | 1 Finger: Back | 2 Fingers: Fwd | Fist: Play/Pause",
+            f"Left 🤚: Bright {int(bright_per)}% | Right 🖐️: Vol {int(vol_per)}% | Thumb In: 1=Back 2=Fwd | Fist: Play/Pause",
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.38,
