@@ -1,10 +1,13 @@
 """
-Ultimate All-In-One HandGesture Master Controller (Conflict-Free HCI Edition + Custom Sound FX).
-Combines Volume Control, Brightness Control, Media Seeking (-10s / +10s), and Play/Pause into ONE unified camera feed!
+HandGesture Master Controller (Clean Volume + Brightness + Play/Pause Edition).
+Combines Volume Control, Brightness Control, and Play/Pause Toggle into ONE unified camera feed!
 
-Custom Sound Effects Engine:
-  - Plays Cyberpunk Audio Beeps asynchronously on gesture triggers (Zero Video Lag!).
-  - Supports custom WAV audio files in 'assets/sounds/' folder (play_pause.wav, seek_forward.wav, etc.).
+Clean Gesture Mapping:
+  🖐️ Right Hand Pinch/Spread : Master Volume Control (Right Green Bar 🔊)
+  🤚 Left Hand Pinch/Spread  : Screen Brightness Control (Left Gold Bar ☀️)
+  ✊ Fist (0 Fingers)        : FIST ✊ -> PLAY / PAUSE TOGGLE (with Custom Sound FX!)
+
+Compatible with YouTube (Opera GX, Chrome, Edge), Netflix, Prime Video, VLC, and Spotify.
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
@@ -30,12 +33,10 @@ try:
     from hand_tracker import HandDetector, CyberpunkTheme
     from volume_control import SystemAudioController, initialize_camera, generate_simulated_hand_frame
     from brightness_control import SystemBrightnessController
-    from media_control import UniversalMediaController
 except ImportError:
     from src.hand_tracker import HandDetector, CyberpunkTheme
     from src.volume_control import SystemAudioController, initialize_camera, generate_simulated_hand_frame
     from src.brightness_control import SystemBrightnessController
-    from src.media_control import UniversalMediaController
 
 
 class GestureSoundFX:
@@ -63,10 +64,6 @@ class GestureSoundFX:
                     import winsound
                     if sound_type == "play_pause":
                         winsound.Beep(1200, 120)  # High futuristic beep for Play/Pause
-                    elif sound_type == "seek_forward":
-                        winsound.Beep(1500, 80)   # High pitch double beep
-                    elif sound_type == "seek_backward":
-                        winsound.Beep(800, 80)    # Low pitch beep
                     elif sound_type == "mute":
                         winsound.Beep(500, 100)   # Low mute tone
             except Exception:
@@ -77,7 +74,7 @@ class GestureSoundFX:
 
 def run_master_control():
     """
-    Main loop combining All-In-One Hand Gesture Automation with Custom Sound Effects.
+    Main loop combining Volume Control, Brightness Control, and Play/Pause Toggle.
     """
     cam_index = 0
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
@@ -91,7 +88,6 @@ def run_master_control():
     detector = HandDetector(detection_con=0.7, track_con=0.7, max_hands=2)
     audio_ctrl = SystemAudioController()
     bright_ctrl = SystemBrightnessController()
-    media_ctrl = UniversalMediaController()
 
     # Gesture Range Configuration
     min_dist = 20
@@ -104,7 +100,9 @@ def run_master_control():
     bright_per = bright_ctrl.current_brightness
     p_time = time.time()
 
-    # Play/Pause Debounce Timer
+    # Play/Pause Status & Debounce Timer
+    last_action_text = "READY - USE FIST ✊ FOR PLAY / PAUSE"
+    last_action_color = CyberpunkTheme.CYAN
     last_playpause_time = 0
     playpause_cooldown = 1.2
 
@@ -116,13 +114,11 @@ def run_master_control():
     print("\n=======================================================")
     print(" 🚀 HandGesture Master Control - ALL-IN-ONE MASTER CONTROLLER")
     print(" Author: Himesh Rupchandani")
-    print(" Theme: CYBERPUNK NEON ⚡ (Custom Sound FX Enabled)")
+    print(" Theme: CYBERPUNK NEON ⚡ (Clean Edition)")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
     print(" Gesture Rules:")
     print("  🖐️ Right Hand Pinch/Spread : Master Volume Control (Right Green Bar)")
-    print("  🤚 Left Hand (Thumb Open)  : Screen Brightness Control (Left Gold Bar)")
-    print("  ☝️ Left Hand (Thumb In) + 1 : 1 FINGER BACK <- SEEK BACKWARD (-10s)")
-    print("  ✌️ Left Hand (Thumb In) + 2 : 2 FINGERS FORWARD -> SEEK FORWARD (+10s)")
+    print("  🤚 Left Hand Pinch/Spread  : Screen Brightness Control (Left Gold Bar)")
     print("  ✊ Fist (0 Fingers)        : FIST ✊ -> PLAY / PAUSE TOGGLE")
     print(" Press 'Q' or 'ESC' to Quit")
     print("=======================================================\n")
@@ -184,7 +180,7 @@ def run_master_control():
                         length, img, line_info = detector.find_distance(4, 8, img, draw=True, r=10, t=3)
                         cx, cy = line_info[4], line_info[5]
 
-                        # RIGHT HAND -> Volume Control ONLY (Zero Seeking Conflicts!)
+                        # RIGHT HAND -> Volume Control
                         if hand_label == "Right":
                             vol_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
                             vol_bar = np.interp(length, [min_dist, max_dist], [400, 150])
@@ -196,34 +192,16 @@ def run_master_control():
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
                                 GestureSoundFX.play_action_sound("mute")
 
-                        # LEFT HAND -> Brightness Control OR Media Seeking
+                        # LEFT HAND -> Brightness Control
                         elif hand_label in ["Left", "Unknown"]:
-                            # If Thumb is FOLDED IN (fingers[0] == 0) and Ring/Pinky closed -> SEEK MODE
-                            if fingers[0] == 0 and fingers[3] == 0 and fingers[4] == 0:
-                                # ☝️ 1 Finger (Index) -> SEEK BACKWARD (-10s)
-                                if fingers[1] == 1 and fingers[2] == 0:
-                                    if media_ctrl.seek_backward():
-                                        GestureSoundFX.play_action_sound("seek_backward")
-                                    cv2.putText(img, "1 FINGER BACK <- SEEK BACKWARD", (lm_list[8][1] - 130, lm_list[8][2] - 30),
-                                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, CyberpunkTheme.MAGENTA, 2)
+                            bright_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
+                            bright_bar = np.interp(length, [min_dist, max_dist], [400, 150])
+                            bright_ctrl.set_brightness_pct(bright_per)
 
-                                # ✌️ 2 Fingers (Peace) -> SEEK FORWARD (+10s)
-                                elif fingers[1] == 1 and fingers[2] == 1:
-                                    if media_ctrl.seek_forward():
-                                        GestureSoundFX.play_action_sound("seek_forward")
-                                    cv2.putText(img, "2 FINGERS FORWARD -> SEEK FORWARD", (lm_list[8][1] - 130, lm_list[8][2] - 30),
-                                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, CyberpunkTheme.YELLOW, 2)
-
-                            else:
-                                # Thumb is OPEN -> Brightness Control
-                                bright_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
-                                bright_bar = np.interp(length, [min_dist, max_dist], [400, 150])
-                                bright_ctrl.set_brightness_pct(bright_per)
-
-                                if length < 25:
-                                    cv2.circle(img, (cx, cy), 12, CyberpunkTheme.YELLOW, cv2.FILLED)
-                                    cv2.putText(img, "DIM", (cx - 25, cy - 25),
-                                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.YELLOW, 2)
+                            if length < 25:
+                                cv2.circle(img, (cx, cy), 12, CyberpunkTheme.YELLOW, cv2.FILLED)
+                                cv2.putText(img, "DIM", (cx - 25, cy - 25),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.YELLOW, 2)
 
                         # ✊ FIST (0 FINGERS EXTENDED) -> PLAY / PAUSE TOGGLE
                         if num_fingers == 0:
@@ -245,8 +223,8 @@ def run_master_control():
                                     pass
 
                                 last_playpause_time = now
-                                media_ctrl.last_action_text = "FIST ✊ -> PLAY / PAUSE TOGGLE"
-                                media_ctrl.last_action_color = CyberpunkTheme.YELLOW
+                                last_action_text = "FIST ✊ -> PLAY / PAUSE TOGGLE"
+                                last_action_color = CyberpunkTheme.YELLOW
                                 print("[MasterController] ✊ Fist Detected -> Play/Pause Toggled")
                                 GestureSoundFX.play_action_sound("play_pause")
 
@@ -270,7 +248,7 @@ def run_master_control():
         cv2.rectangle(img, (20, 20), (660, 95), CyberpunkTheme.CYAN, 2)
         cv2.putText(
             img,
-            "HandGesture Control: ALL-IN-ONE MASTER",
+            "HandGesture Control: MASTER CONTROLLER",
             (30, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
@@ -279,26 +257,24 @@ def run_master_control():
         )
         cv2.putText(
             img,
-            f"Left 🤚: Bright {int(bright_per)}% | Right 🖐️: Vol {int(vol_per)}% | Thumb In: 1=Back 2=Fwd | Fist: Play/Pause",
+            f"Left 🤚: Bright {int(bright_per)}% | Right 🖐️: Vol {int(vol_per)}% | Fist ✊: Play / Pause Toggle",
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.38,
+            0.42,
             CyberpunkTheme.CYAN,
             1
         )
 
         # Status Notification Banner in Center
-        banner_text = media_ctrl.last_action_text
-        banner_color = media_ctrl.last_action_color
         cv2.rectangle(img, (280, 620), (1000, 680), CyberpunkTheme.DARK_CARD, cv2.FILLED)
-        cv2.rectangle(img, (280, 620), (1000, 680), banner_color, 2)
+        cv2.rectangle(img, (280, 620), (1000, 680), last_action_color, 2)
         cv2.putText(
             img,
-            banner_text,
+            last_action_text,
             (300, 660),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
-            banner_color,
+            last_action_color,
             2
         )
 
@@ -321,14 +297,8 @@ def run_master_control():
         # Key press handler
         key = cv2.waitKey(30) & 0xFF
         if key == ord('q') or key == 27:
-            print("\nExiting All-In-One Master Controller... Goodbye!")
+            print("\nExiting Master Controller... Goodbye!")
             break
-        elif key in [ord('1'), ord('a')] and is_simulator_mode:
-            media_ctrl.seek_backward()
-            GestureSoundFX.play_action_sound("seek_backward")
-        elif key in [ord('2'), ord('d')] and is_simulator_mode:
-            media_ctrl.seek_forward()
-            GestureSoundFX.play_action_sound("seek_forward")
         elif key == ord('s') and is_simulator_mode:
             auto_animate = not auto_animate
 
