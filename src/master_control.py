@@ -1,8 +1,15 @@
 """
-Dual Master Control Module combining Volume & Brightness Control in a Single Camera Feed.
+Ultimate All-In-One HandGesture Master Controller.
+Combines Volume Control, Brightness Control, Media Seeking (-10s / +10s), and Play/Pause into ONE unified camera feed!
 
-Left Side HUD ☀️   <- Screen Brightness Control (Left Hand 🤚)
-Right Side HUD 🔊  <- System Volume Control (Right Hand 🖐️)
+Gesture Control Reference:
+  🖐️ Right Hand Pinch/Spread : System Master Volume Control (Right Side Green HUD Bar 🔊)
+  🤚 Left Hand Pinch/Spread  : Screen Brightness Control (Left Side Gold HUD Bar ☀️)
+  ☝️ 1 Finger Extended (Index) : 1 FINGER BACK <- SEEK BACKWARD (-10s)
+  ✌️ 2 Fingers Extended (Peace): 2 FINGERS FORWARD -> SEEK FORWARD (+10s)
+  ✊ Fist (0 Fingers)          : FIST ✊ -> PLAY / PAUSE TOGGLE
+
+Compatible with YouTube (Opera GX, Chrome, Edge), Netflix, Prime Video, VLC, and Spotify.
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
@@ -16,21 +23,28 @@ import sys
 import time
 import cv2
 import numpy as np
+import pyautogui
+
+# PyAutoGUI Safety Settings
+pyautogui.FAILSAFE = False
+pyautogui.PAUSE = 0.05
 
 # Import custom modules
 try:
     from hand_tracker import HandDetector, CyberpunkTheme
     from volume_control import SystemAudioController, initialize_camera, generate_simulated_hand_frame
     from brightness_control import SystemBrightnessController
+    from media_control import UniversalMediaController
 except ImportError:
     from src.hand_tracker import HandDetector, CyberpunkTheme
     from src.volume_control import SystemAudioController, initialize_camera, generate_simulated_hand_frame
     from src.brightness_control import SystemBrightnessController
+    from src.media_control import UniversalMediaController
 
 
 def run_master_control():
     """
-    Main loop combining Dual-Hand Gesture Control (Left = Brightness, Right = Volume).
+    Main loop combining All-In-One Hand Gesture Automation.
     """
     cam_index = 0
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
@@ -40,10 +54,11 @@ def run_master_control():
     cap, active_cam_idx = initialize_camera(cam_index)
     is_simulator_mode = (cap is None)
 
-    # Initialize Hand Detector (max_hands=2 for dual-hand tracking)
+    # Initialize Hand Detector (max_hands=2 for dual hand tracking)
     detector = HandDetector(detection_con=0.7, track_con=0.7, max_hands=2)
     audio_ctrl = SystemAudioController()
     bright_ctrl = SystemBrightnessController()
+    media_ctrl = UniversalMediaController()
 
     # Gesture Range Configuration
     min_dist = 20
@@ -56,18 +71,26 @@ def run_master_control():
     bright_per = bright_ctrl.current_brightness
     p_time = time.time()
 
+    # Play/Pause Debounce Timer
+    last_playpause_time = 0
+    playpause_cooldown = 1.2
+
     # Simulator State
     sim_dist = 100
     sim_direction = 2
     auto_animate = True
 
     print("\n=======================================================")
-    print(" 🚀 HandGesture Master Control - Dual Master Controller")
+    print(" 🚀 HandGesture Master Control - ALL-IN-ONE MASTER CONTROLLER")
     print(" Author: Himesh Rupchandani")
     print(" Theme: CYBERPUNK NEON ⚡")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
-    print(" Left Side HUD ☀️  : Brightness Control (Left Hand 🤚)")
-    print(" Right Side HUD 🔊 : Volume Control (Right Hand 🖐️)")
+    print(" Gesture Rules:")
+    print("  🖐️ Right Hand Pinch/Spread : Master Volume Control (Right Green Bar)")
+    print("  🤚 Left Hand Pinch/Spread  : Screen Brightness Control (Left Gold Bar)")
+    print("  ☝️ 1 Finger Extended       : 1 FINGER BACK <- SEEK BACKWARD (-10s)")
+    print("  ✌️ 2 Fingers Extended      : 2 FINGERS FORWARD -> SEEK FORWARD (+10s)")
+    print("  ✊ Fist (0 Fingers)        : FIST ✊ -> PLAY / PAUSE TOGGLE")
     print(" Press 'Q' or 'ESC' to Quit")
     print("=======================================================\n")
 
@@ -95,7 +118,7 @@ def run_master_control():
 
             img, length, pt1, pt2, center = generate_simulated_hand_frame(sim_dist, auto_animate)
 
-            # Map simulated distance to both controls
+            # Map simulated distance to controls
             vol_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
             bright_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
             vol_bar = np.interp(length, [min_dist, max_dist], [400, 150])
@@ -109,7 +132,6 @@ def run_master_control():
                 cv2.putText(img, "MUTED / DIM", (center[0] - 55, center[1] - 25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
         else:
-            # Flip image horizontally for natural mirror view
             img = cv2.flip(img, 1)
 
             # 1. Find Hands
@@ -122,6 +144,43 @@ def run_master_control():
                     lm_list, bbox = detector.find_positions(img, hand_no=h_idx, draw=False)
 
                     if len(lm_list) != 0:
+                        fingers = detector.fingers_up(hand_no=h_idx)
+                        num_fingers = sum(fingers)
+
+                        # Check Finger Count Seek & Play/Pause Gestures
+                        # ☝️ 1 FINGER EXTENDED -> SEEK BACKWARD (-10s)
+                        if num_fingers == 1 and fingers[1] == 1:
+                            media_ctrl.seek_backward()
+
+                        # ✌️ 2 FINGERS EXTENDED -> SEEK FORWARD (+10s)
+                        elif num_fingers == 2 and fingers[1] == 1 and fingers[2] == 1:
+                            media_ctrl.seek_forward()
+
+                        # ✊ FIST (0 FINGERS) -> PLAY / PAUSE TOGGLE
+                        elif num_fingers == 0:
+                            now = time.time()
+                            if now - last_playpause_time >= playpause_cooldown:
+                                try:
+                                    if platform.system() == "Windows":
+                                        import ctypes
+                                        VK_SPACE = 0x20
+                                        VK_K = 0x4B  # YouTube Play/Pause Hotkey
+                                        user32 = ctypes.windll.user32
+                                        user32.keybd_event(VK_K, 0, 0, 0)
+                                        user32.keybd_event(VK_K, 0, 2, 0)
+                                        user32.keybd_event(VK_SPACE, 0, 0, 0)
+                                        user32.keybd_event(VK_SPACE, 0, 2, 0)
+                                    pyautogui.press('k')
+                                    pyautogui.press('space')
+                                except Exception:
+                                    pass
+
+                                last_playpause_time = now
+                                media_ctrl.last_action_text = "FIST ✊ -> PLAY / PAUSE TOGGLE"
+                                media_ctrl.last_action_color = CyberpunkTheme.YELLOW
+                                print("[MasterController] ✊ Fist Detected -> Play/Pause Toggled")
+
+                        # Continuous Distance Controls (Volume & Brightness)
                         length, img, line_info = detector.find_distance(4, 8, img, draw=True, r=10, t=3)
                         cx, cy = line_info[4], line_info[5]
 
@@ -163,11 +222,11 @@ def run_master_control():
         cv2.putText(img, "🔊 VOL", (1175, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
 
         # Header Title Card
-        cv2.rectangle(img, (20, 20), (620, 95), CyberpunkTheme.DARK_CARD, cv2.FILLED)
-        cv2.rectangle(img, (20, 20), (620, 95), CyberpunkTheme.CYAN, 2)
+        cv2.rectangle(img, (20, 20), (660, 95), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (20, 20), (660, 95), CyberpunkTheme.CYAN, 2)
         cv2.putText(
             img,
-            "HandGesture Master Control: Dual Mode",
+            "HandGesture Control: ALL-IN-ONE MASTER",
             (30, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
@@ -176,19 +235,34 @@ def run_master_control():
         )
         cv2.putText(
             img,
-            f"Left 🤚: Bright {int(bright_per)}% | Right 🖐️: Vol {int(vol_per)}%",
+            f"Left 🤚: Bright {int(bright_per)}% | Right 🖐️: Vol {int(vol_per)}% | 1 Finger: Back | 2 Fingers: Fwd | Fist: Play/Pause",
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
+            0.38,
             CyberpunkTheme.CYAN,
             1
         )
 
+        # Status Notification Banner in Center
+        banner_text = media_ctrl.last_action_text
+        banner_color = media_ctrl.last_action_color
+        cv2.rectangle(img, (280, 620), (1000, 680), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (280, 620), (1000, 680), banner_color, 2)
+        cv2.putText(
+            img,
+            banner_text,
+            (300, 660),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            banner_color,
+            2
+        )
+
         # Mode Badge
-        mode_text = "MODE: DUAL WEBCAM" if not is_simulator_mode else "MODE: INTERACTIVE SIMULATOR"
-        cv2.rectangle(img, (820, 20), (1130, 55), CyberpunkTheme.DARK_CARD, cv2.FILLED)
-        cv2.rectangle(img, (820, 20), (1130, 55), CyberpunkTheme.MAGENTA, 1)
-        cv2.putText(img, mode_text, (830, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.5, CyberpunkTheme.CYAN, 2)
+        mode_text = "MODE: ALL-IN-ONE MASTER" if not is_simulator_mode else "MODE: INTERACTIVE SIMULATOR"
+        cv2.rectangle(img, (750, 20), (1130, 55), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (750, 20), (1130, 55), CyberpunkTheme.MAGENTA, 1)
+        cv2.putText(img, mode_text, (760, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.CYAN, 2)
 
         # Calculate FPS
         c_time = time.time()
@@ -198,19 +272,17 @@ def run_master_control():
         cv2.putText(img, f"FPS: {int(fps)}", (1150, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, CyberpunkTheme.YELLOW, 2)
 
         # Render Frame
-        cv2.imshow("HandGesture Master Control - Dual Controller", img)
+        cv2.imshow("HandGesture Master Control - All-In-One", img)
 
         # Key press handler
         key = cv2.waitKey(30) & 0xFF
         if key == ord('q') or key == 27:
-            print("\nExiting Dual Master Controller... Goodbye!")
+            print("\nExiting All-In-One Master Controller... Goodbye!")
             break
-        elif key in [ord('a'), 81, 2] and is_simulator_mode:
-            auto_animate = False
-            sim_dist = max(15, sim_dist - 10)
-        elif key in [ord('d'), 83, 3] and is_simulator_mode:
-            auto_animate = False
-            sim_dist = min(220, sim_dist + 10)
+        elif key in [ord('1'), ord('a')] and is_simulator_mode:
+            media_ctrl.seek_backward()
+        elif key in [ord('2'), ord('d')] and is_simulator_mode:
+            media_ctrl.seek_forward()
         elif key == ord('s') and is_simulator_mode:
             auto_animate = not auto_animate
 
