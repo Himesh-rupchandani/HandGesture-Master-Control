@@ -1,14 +1,13 @@
 """
 Universal Media Seeking Module using Super Easy Finger Count Gestures (Prompt 3).
-Works on YouTube, Netflix, Prime Video, VLC, Spotify, and Web Video Players.
+Works on Opera GX, Chrome, Edge, YouTube, Netflix, Prime Video, VLC, and Spotify.
 
-Easiest Gesture Controls (Zero Effort!):
-  <- 1 Finger (Index Only)    : SEEK BACKWARD (-10s)  [Sends Universal 'J' + Left Arrow]
-  -> 2 Fingers (Peace Sign)   : SEEK FORWARD (+10s)   [Sends Universal 'L' + Right Arrow]
-  🖐️ Open Palm / ✊ Fist       : IDLE (No Action)
+Gesture Controls:
+  1 FINGER BACK <- SEEK BACKWARD (-10s)      [Sends 'J', Left Arrow, and Media Prev]
+  2 FINGERS FORWARD -> SEEK FORWARD (+10s)   [Sends 'L', Right Arrow, and Media Next]
+  IDLE / RELAX                                [No Action]
 
-Uses Windows Native VK_J (0x4A) & VK_L (0x4C) Hardware Keybd_Event Injection to control
-YouTube and browser video players directly!
+Includes Opera GX & Web Browser Compatibility Fixes.
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
@@ -39,7 +38,7 @@ except ImportError:
 class UniversalMediaController:
     """
     Universal media playback seek controller sending native OS hardware key events.
-    Supports YouTube ('j'/'l' hotkeys), Netflix, Prime, VLC, Spotify, and Web Video Players.
+    Supports Opera GX, Chrome, Edge, YouTube ('j'/'l' hotkeys), Netflix, Prime, VLC, and Spotify.
     """
 
     def __init__(self):
@@ -51,7 +50,7 @@ class UniversalMediaController:
 
     def seek_backward(self):
         """
-        Triggers Media Seek Backward (-10s) sending 'J' (YouTube) & 'Left Arrow' (Universal).
+        Triggers Media Seek Backward (-10s) with Opera GX & Windows compatibility.
         """
         now = time.time()
         if now - self.last_action_time >= self.cooldown_sec:
@@ -59,34 +58,43 @@ class UniversalMediaController:
                 try:
                     import ctypes
                     VK_LEFT = 0x25
-                    VK_J = 0x4A  # 'J' key is YouTube's official -10s seek hotkey
+                    VK_J = 0x4A                   # 'J' key (YouTube 10s backward)
+                    VK_MEDIA_PREV_TRACK = 0xB1    # Windows Media Prev Track
                     
-                    # Inject VK_J
-                    ctypes.windll.user32.keybd_event(VK_J, 0, 0, 0)
-                    ctypes.windll.user32.keybd_event(VK_J, 0, 2, 0)  # KEYEVENTF_KEYUP = 2
+                    user32 = ctypes.windll.user32
                     
-                    # Inject VK_LEFT
-                    ctypes.windll.user32.keybd_event(VK_LEFT, 0, 0, 0)
-                    ctypes.windll.user32.keybd_event(VK_LEFT, 0, 2, 0)
+                    # Inject VK_J (YouTube Official -10s Hotkey)
+                    user32.keybd_event(VK_J, 0, 0, 0)
+                    user32.keybd_event(VK_J, 0, 2, 0)
+                    
+                    # Inject VK_LEFT (Universal Left Arrow)
+                    user32.keybd_event(VK_LEFT, 0, 0, 0)
+                    user32.keybd_event(VK_LEFT, 0, 2, 0)
+
+                    # Inject VK_MEDIA_PREV_TRACK for background media players
+                    user32.keybd_event(VK_MEDIA_PREV_TRACK, 0, 0, 0)
+                    user32.keybd_event(VK_MEDIA_PREV_TRACK, 0, 2, 0)
+
                 except Exception as err:
                     print(f"[MediaController] Windows keybd_event error: {err}")
 
             try:
                 pyautogui.press('j')
                 pyautogui.press('left')
+                pyautogui.press('prevtrack')
             except Exception:
                 pass
 
             self.last_action_time = now
-            self.last_action_text = "<- 1 FINGER -> SEEK BACKWARD (-10s)"
+            self.last_action_text = "1 FINGER BACK <- SEEK BACKWARD"
             self.last_action_color = CyberpunkTheme.MAGENTA
-            print("[MediaController] <- 1 Finger Detected -> Seek Backward (-10s)")
+            print("[MediaController] 1 FINGER BACK <- Seek Backward (-10s)")
             return True
         return False
 
     def seek_forward(self):
         """
-        Triggers Media Seek Forward (+10s) sending 'L' (YouTube) & 'Right Arrow' (Universal).
+        Triggers Media Seek Forward (+10s) with Opera GX & Windows compatibility.
         """
         now = time.time()
         if now - self.last_action_time >= self.cooldown_sec:
@@ -94,28 +102,37 @@ class UniversalMediaController:
                 try:
                     import ctypes
                     VK_RIGHT = 0x27
-                    VK_L = 0x4C  # 'L' key is YouTube's official +10s seek hotkey
+                    VK_L = 0x4C                   # 'L' key (YouTube 10s forward)
+                    VK_MEDIA_NEXT_TRACK = 0xB0    # Windows Media Next Track
                     
-                    # Inject VK_L
-                    ctypes.windll.user32.keybd_event(VK_L, 0, 0, 0)
-                    ctypes.windll.user32.keybd_event(VK_L, 0, 2, 0)  # KEYEVENTF_KEYUP = 2
+                    user32 = ctypes.windll.user32
                     
-                    # Inject VK_RIGHT
-                    ctypes.windll.user32.keybd_event(VK_RIGHT, 0, 0, 0)
-                    ctypes.windll.user32.keybd_event(VK_RIGHT, 0, 2, 0)
+                    # Inject VK_L (YouTube Official +10s Hotkey)
+                    user32.keybd_event(VK_L, 0, 0, 0)
+                    user32.keybd_event(VK_L, 0, 2, 0)
+                    
+                    # Inject VK_RIGHT (Universal Right Arrow)
+                    user32.keybd_event(VK_RIGHT, 0, 0, 0)
+                    user32.keybd_event(VK_RIGHT, 0, 2, 0)
+
+                    # Inject VK_MEDIA_NEXT_TRACK for background media players
+                    user32.keybd_event(VK_MEDIA_NEXT_TRACK, 0, 0, 0)
+                    user32.keybd_event(VK_MEDIA_NEXT_TRACK, 0, 2, 0)
+
                 except Exception as err:
                     print(f"[MediaController] Windows keybd_event error: {err}")
 
             try:
                 pyautogui.press('l')
                 pyautogui.press('right')
+                pyautogui.press('nexttrack')
             except Exception:
                 pass
 
             self.last_action_time = now
-            self.last_action_text = "-> 2 FINGERS -> SEEK FORWARD (+10s)"
+            self.last_action_text = "2 FINGERS FORWARD -> SEEK FORWARD"
             self.last_action_color = CyberpunkTheme.YELLOW
-            print("[MediaController] -> 2 Fingers Detected -> Seek Forward (+10s)")
+            print("[MediaController] 2 FINGERS FORWARD -> Seek Forward (+10s)")
             return True
         return False
 
@@ -200,9 +217,9 @@ def generate_simulated_finger_frame(finger_count):
     cv2.rectangle(img, (750, 540), (1250, 690), CyberpunkTheme.CYAN, 2)
     cv2.putText(img, "EASY FINGER SEEK CONTROLS:", (765, 575),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.52, CyberpunkTheme.CYAN, 2)
-    cv2.putText(img, " • Press '1' / 'A' : Show 1 Finger (Seek -10s)", (765, 605),
+    cv2.putText(img, " • Press '1' / 'A' : 1 FINGER BACK <- (Seek -10s)", (765, 605),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.MAGENTA, 1)
-    cv2.putText(img, " • Press '2' / 'D' : Show 2 Fingers (Seek +10s)", (765, 630),
+    cv2.putText(img, " • Press '2' / 'D' : 2 FINGERS FORWARD -> (Seek +10s)", (765, 630),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.YELLOW, 1)
     cv2.putText(img, " • Press '0'       : IDLE / Relax Hand", (765, 655),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.WHITE, 1)
@@ -237,10 +254,10 @@ def run_media_control():
     print(" Theme: CYBERPUNK NEON ⚡")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
     print(" Gesture Rules (Super Easy!):")
-    print("  <- 1 Finger Extended (Index)   : SEEK BACKWARD (-10s)")
-    print("  -> 2 Fingers Extended (Peace)  : SEEK FORWARD (+10s)")
+    print("  1 FINGER BACK <-               : SEEK BACKWARD (-10s)")
+    print("  2 FINGERS FORWARD ->           : SEEK FORWARD (+10s)")
     print("  🖐️ Open Palm / ✊ Fist          : IDLE (No Action)")
-    print(" Compatible: YouTube ('J'/'L'), Netflix, Prime, VLC, Spotify & Web Players")
+    print(" Compatible: Opera GX, Chrome, Edge, YouTube, Netflix, Prime, VLC & Spotify")
     print(" Press 'Q' or 'ESC' to Quit")
     print("=======================================================\n")
 
@@ -274,22 +291,22 @@ def run_media_control():
                 fingers = detector.fingers_up()
                 num_fingers = sum(fingers)
 
-                # <- 1 FINGER EXTENDED (Index Finger Only) -> SEEK BACKWARD (-10s)
+                # 1 FINGER EXTENDED (Index Finger Only) -> SEEK BACKWARD (-10s)
                 if num_fingers == 1 and fingers[1] == 1:
                     media_ctrl.seek_backward()
-                    cv2.putText(img, "<- 1 FINGER -> SEEK BACKWARD", (lm_list[8][1] - 120, lm_list[8][2] - 30),
+                    cv2.putText(img, "1 FINGER BACK <- SEEK BACKWARD", (lm_list[8][1] - 130, lm_list[8][2] - 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, CyberpunkTheme.MAGENTA, 2)
 
-                # -> 2 FINGERS EXTENDED (Index + Middle / Peace Sign) -> SEEK FORWARD (+10s)
+                # 2 FINGERS EXTENDED (Index + Middle / Peace Sign) -> SEEK FORWARD (+10s)
                 elif num_fingers == 2 and fingers[1] == 1 and fingers[2] == 1:
                     media_ctrl.seek_forward()
-                    cv2.putText(img, "-> 2 FINGERS -> SEEK FORWARD", (lm_list[8][1] - 120, lm_list[8][2] - 30),
+                    cv2.putText(img, "2 FINGERS FORWARD -> SEEK FORWARD", (lm_list[8][1] - 130, lm_list[8][2] - 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, CyberpunkTheme.YELLOW, 2)
 
         # Draw UI Overlay Components
         # Header Title Card
-        cv2.rectangle(img, (20, 20), (640, 95), CyberpunkTheme.DARK_CARD, cv2.FILLED)
-        cv2.rectangle(img, (20, 20), (640, 95), CyberpunkTheme.CYAN, 2)
+        cv2.rectangle(img, (20, 20), (660, 95), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (20, 20), (660, 95), CyberpunkTheme.CYAN, 2)
         cv2.putText(
             img,
             "HandGesture Control: Easy Media Seek",
@@ -301,7 +318,7 @@ def run_media_control():
         )
         cv2.putText(
             img,
-            "<- 1 Finger: SEEK BACKWARD (-10s) | -> 2 Fingers: SEEK FORWARD (+10s)",
+            "1 FINGER BACK <- SEEK BACKWARD | 2 FINGERS FORWARD -> SEEK FORWARD",
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.4,
