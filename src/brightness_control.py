@@ -60,7 +60,6 @@ class SystemBrightnessController:
         Set screen brightness level directly (0% to 100%).
         """
         new_bright = int(np.clip(brightness_pct, 0, 100))
-        # Prevent spamming OS display API if brightness level hasn't changed noticeably
         if abs(new_bright - self.current_brightness) < 1 and self.current_brightness != 0 and new_bright != 0:
             return
 
@@ -68,10 +67,9 @@ class SystemBrightnessController:
 
         if HAS_SBC:
             try:
-                # Ensure minimum 5% to prevent total screen blackouts
                 safe_val = max(5, self.current_brightness)
                 sbc.set_brightness(safe_val)
-            except Exception as e:
+            except Exception:
                 pass
 
 
@@ -130,11 +128,9 @@ def generate_simulated_hand_frame(sim_distance, auto_mode=True):
     """
     img = np.zeros((720, 1280, 3), dtype=np.uint8)
 
-    # Background gradient simulating brightness changes
     bg_val = int(10 + (sim_distance / 200) * 45)
     img[:, :] = (bg_val, bg_val + 5, bg_val + 10)
 
-    # Hand center anchor for Left Hand
     wrist = (640, 580)
 
     thumb_x = int(640 - sim_distance / 2)
@@ -161,7 +157,7 @@ def generate_simulated_hand_frame(sim_distance, auto_mode=True):
 
     for p1_id, p2_id in connections:
         pt1, pt2 = landmarks[p1_id], landmarks[p2_id]
-        cv2.line(img, pt1, pt2, (0, 215, 255), 2)  # Gold connection lines
+        cv2.line(img, pt1, pt2, (0, 215, 255), 2)
 
     for lm_id, pt in landmarks.items():
         color = (0, 255, 255) if lm_id in [4, 8] else (0, 165, 255)
@@ -265,57 +261,47 @@ def run_brightness_control():
                 cv2.putText(img, "MIN BRIGHTNESS", (center[0] - 65, center[1] - 25),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
         else:
-            # Flip image horizontally for natural mirror view
             img = cv2.flip(img, 1)
 
             # 1. Find Hands
             img = detector.find_hands(img, draw=True)
 
-            # Process all detected hands to locate the Left Hand
             if detector.results and detector.results.multi_hand_landmarks:
                 for h_idx in range(len(detector.results.multi_hand_landmarks)):
                     hand_label = detector.get_hand_label(h_idx)
                     
-                    # Target LEFT HAND for Brightness Control
-                    # Note: After horizontal cv2.flip, MediaPipe's 'Left' label matches user's physical Left Hand
                     if hand_label in ["Left", "Unknown"]:
                         lm_list, bbox = detector.find_positions(img, hand_no=h_idx, draw=False)
 
                         if len(lm_list) != 0:
-                            # 2. Extract landmark 4 (Thumb tip) and landmark 8 (Index tip)
                             length, img, line_info = detector.find_distance(4, 8, img, draw=True, r=10, t=3)
                             cx, cy = line_info[4], line_info[5]
 
-                            # Convert distance to brightness range
                             bright_per = np.interp(length, [min_dist, max_dist], [0, 100])
                             bright_bar = np.interp(length, [min_dist, max_dist], [400, 150])
                             bright_per = int(np.clip(bright_per, 0, 100))
 
-                            # Update System Brightness
                             bright_ctrl.set_brightness_pct(bright_per)
 
                             if length < 25:
                                 cv2.circle(img, (cx, cy), 12, (0, 0, 255), cv2.FILLED)
                                 cv2.putText(img, "DIM / MIN", (cx - 50, cy - 25),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-                            break  # Hand processed
+                            break
 
-        # Draw UI Overlay Components (Right Side Gold / Yellow HUD for Brightness)
-        # Vertical Brightness Bar on Right Side (1200px)
-        cv2.rectangle(img, (1190, 150), (1225, 400), (200, 200, 200), 3)
-        cv2.rectangle(img, (1190, int(bright_bar)), (1225, 400), (0, 215, 255), cv2.FILLED)
+        # Draw UI Overlay Components (Brightness Bar on LEFT SIDE)
+        cv2.rectangle(img, (50, 150), (85, 400), (200, 200, 200), 3)
+        cv2.rectangle(img, (50, int(bright_bar)), (85, 400), (0, 215, 255), cv2.FILLED)
         cv2.putText(
             img,
             f"{int(bright_per)}%",
-            (1180, 450),
+            (40, 450),
             cv2.FONT_HERSHEY_SIMPLEX,
             1.0,
             (0, 215, 255),
             3
         )
-
-        # Sun Icon / Label Card on Right
-        cv2.putText(img, "☀️ SUN", (1175, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 215, 255), 2)
+        cv2.putText(img, "☀️ SUN", (35, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 215, 255), 2)
 
         # Header Title Card
         cv2.rectangle(img, (20, 20), (600, 95), (0, 0, 0), cv2.FILLED)
@@ -367,13 +353,13 @@ def run_brightness_control():
         if key == ord('q') or key == 27:  # 'q' or ESC
             print("\nExiting Brightness Control Module... Goodbye!")
             break
-        elif key in [ord('a'), 81, 2] and is_simulator_mode:  # 'a' or Left Arrow
+        elif key in [ord('a'), 81, 2] and is_simulator_mode:
             auto_animate = False
             sim_dist = max(15, sim_dist - 10)
-        elif key in [ord('d'), 83, 3] and is_simulator_mode:  # 'd' or Right Arrow
+        elif key in [ord('d'), 83, 3] and is_simulator_mode:
             auto_animate = False
             sim_dist = min(220, sim_dist + 10)
-        elif key == ord('s') and is_simulator_mode:          # 's' Toggle Auto-Animate
+        elif key == ord('s') and is_simulator_mode:
             auto_animate = not auto_animate
 
     if cap is not None:

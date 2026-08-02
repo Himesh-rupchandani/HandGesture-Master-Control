@@ -58,7 +58,6 @@ class SystemAudioController:
             from comtypes import CLSCTX_ALL
             from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume, MMDeviceEnumerator, EDataFlow, ERole
 
-            # 1. Try active default multimedia render device (Speakers/Headphones)
             try:
                 enum = MMDeviceEnumerator()
                 device = enum.GetDefaultAudioEndpoint(EDataFlow.eRender.value, ERole.eMultimedia.value)
@@ -68,7 +67,6 @@ class SystemAudioController:
             except Exception as err:
                 print(f"[AudioController] MMDeviceEnumerator info: {err}")
 
-            # 2. Fallback to AudioUtilities.GetSpeakers() if default endpoint wasn't bound
             if self.volume_interface is None:
                 devices = AudioUtilities.GetSpeakers()
                 if devices:
@@ -98,7 +96,6 @@ class SystemAudioController:
         target_scalar = float(new_vol) / 100.0
 
         if self.os_type == "Windows":
-            # Primary Method: Direct Pycaw Endpoint Volume Control
             if self.volume_interface is not None:
                 try:
                     self.volume_interface.SetMasterVolumeLevelScalar(target_scalar, None)
@@ -115,7 +112,6 @@ class SystemAudioController:
                         except Exception:
                             pass
 
-            # Fallback Method: Windows Virtual Key Events (VK_VOLUME_UP / VK_VOLUME_DOWN)
             try:
                 import ctypes
                 VK_VOLUME_DOWN = 0xAE
@@ -127,7 +123,7 @@ class SystemAudioController:
                     vk_code = VK_VOLUME_UP if diff > 0 else VK_VOLUME_DOWN
                     for _ in range(steps):
                         ctypes.windll.user32.keybd_event(vk_code, 0, 0, 0)
-                        ctypes.windll.user32.keybd_event(vk_code, 0, 2, 0)  # KEYEVENTF_KEYUP = 2
+                        ctypes.windll.user32.keybd_event(vk_code, 0, 2, 0)
                     self.current_vol_pct = new_vol
             except Exception as err:
                 print(f"[AudioController] Key event fallback error: {err}")
@@ -299,7 +295,7 @@ def run_volume_control():
     sim_direction = 2
     auto_animate = True
 
-    # UI Smoothness variables
+    # UI variables
     vol_bar = 400
     vol_per = 0
     p_time = time.time()
@@ -331,7 +327,6 @@ def run_volume_control():
                 is_simulator_mode = True
 
         if is_simulator_mode:
-            # Automatic Pinch/Spread animation loop if enabled
             if auto_animate:
                 sim_dist += sim_direction
                 if sim_dist >= 210 or sim_dist <= 15:
@@ -377,19 +372,19 @@ def run_volume_control():
                     cv2.putText(img, "MUTED / MIN", (cx - 50, cy - 25),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-        # Draw UI Overlay Components
-        # Vertical Volume Bar
-        cv2.rectangle(img, (50, 150), (85, 400), (200, 200, 200), 3)
-        cv2.rectangle(img, (50, int(vol_bar)), (85, 400), (0, 255, 0), cv2.FILLED)
+        # Draw UI Overlay Components (Volume Bar on RIGHT SIDE)
+        cv2.rectangle(img, (1190, 150), (1225, 400), (200, 200, 200), 3)
+        cv2.rectangle(img, (1190, int(vol_bar)), (1225, 400), (0, 255, 0), cv2.FILLED)
         cv2.putText(
             img,
             f"{int(vol_per)}%",
-            (40, 450),
+            (1180, 450),
             cv2.FONT_HERSHEY_SIMPLEX,
             1.0,
             (0, 255, 0),
             3
         )
+        cv2.putText(img, "🔊 VOL", (1175, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
         # Header Title Card
         cv2.rectangle(img, (20, 20), (560, 95), (0, 0, 0), cv2.FILLED)
@@ -414,9 +409,9 @@ def run_volume_control():
 
         # Execution Mode Badge
         mode_text = "MODE: LIVE WEBCAM" if not is_simulator_mode else "MODE: INTERACTIVE SIMULATOR"
-        badge_color = (0, 200, 0) if not is_simulator_mode else (0, 165, 255)
-        cv2.rectangle(img, (820, 20), (1130, 55), (0, 0, 0), cv2.FILLED)
-        cv2.putText(img, mode_text, (830, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.5, badge_color, 2)
+        badge_color = (0, 250, 0) if not is_simulator_mode else (0, 165, 255)
+        cv2.rectangle(img, (750, 20), (1130, 55), (0, 0, 0), cv2.FILLED)
+        cv2.putText(img, mode_text, (760, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.5, badge_color, 2)
 
         # Calculate and display FPS
         c_time = time.time()
@@ -441,13 +436,13 @@ def run_volume_control():
         if key == ord('q') or key == 27:  # 'q' or ESC
             print("\nExiting Volume Control Module... Goodbye!")
             break
-        elif key in [ord('a'), 81, 2] and is_simulator_mode:  # 'a' or Left Arrow (Pinch)
+        elif key in [ord('a'), 81, 2] and is_simulator_mode:
             auto_animate = False
             sim_dist = max(15, sim_dist - 10)
-        elif key in [ord('d'), 83, 3] and is_simulator_mode:  # 'd' or Right Arrow (Spread)
+        elif key in [ord('d'), 83, 3] and is_simulator_mode:
             auto_animate = False
             sim_dist = min(220, sim_dist + 10)
-        elif key == ord('s') and is_simulator_mode:          # 's' Toggle Auto-Animate
+        elif key == ord('s') and is_simulator_mode:
             auto_animate = not auto_animate
 
     if cap is not None:

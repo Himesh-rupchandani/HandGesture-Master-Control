@@ -1,8 +1,8 @@
 """
 Dual Master Control Module combining Volume & Brightness Control in a Single Camera Feed.
 
-Right Hand 🖐️  -> Controls Volume (Green Left HUD Bar)
-Left Hand 🤚   -> Controls Brightness (Gold Right HUD Bar)
+Left Side HUD ☀️   <- Screen Brightness Control (Left Hand 🤚)
+Right Side HUD 🔊  <- System Volume Control (Right Hand 🖐️)
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
@@ -29,7 +29,7 @@ except ImportError:
 
 def run_master_control():
     """
-    Main loop combining Dual-Hand Gesture Control (Right = Volume, Left = Brightness).
+    Main loop combining Dual-Hand Gesture Control (Left = Brightness, Right = Volume).
     """
     cam_index = 0
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
@@ -64,8 +64,8 @@ def run_master_control():
     print(" 🚀 HandGesture Master Control - Dual Master Controller")
     print(" Author: Himesh Rupchandani")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
-    print(" Right Hand 🖐️ : Volume Control (Green Left Bar)")
-    print(" Left Hand 🤚  : Brightness Control (Gold Right Bar)")
+    print(" Left Side HUD ☀️  : Brightness Control (Left Hand 🤚)")
+    print(" Right Side HUD 🔊 : Volume Control (Right Hand 🖐️)")
     print(" Press 'Q' or 'ESC' to Quit")
     print("=======================================================\n")
 
@@ -123,7 +123,7 @@ def run_master_control():
                         length, img, line_info = detector.find_distance(4, 8, img, draw=True, r=10, t=3)
                         cx, cy = line_info[4], line_info[5]
 
-                        # RIGHT HAND -> Volume Control
+                        # RIGHT HAND -> Volume Control (Right Side HUD)
                         if hand_label == "Right":
                             vol_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
                             vol_bar = np.interp(length, [min_dist, max_dist], [400, 150])
@@ -134,7 +134,7 @@ def run_master_control():
                                 cv2.putText(img, "MUTED", (cx - 35, cy - 25),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-                        # LEFT HAND -> Brightness Control
+                        # LEFT HAND -> Brightness Control (Left Side HUD)
                         elif hand_label in ["Left", "Unknown"]:
                             bright_per = int(np.clip(np.interp(length, [min_dist, max_dist], [0, 100]), 0, 100))
                             bright_bar = np.interp(length, [min_dist, max_dist], [400, 150])
@@ -146,15 +146,17 @@ def run_master_control():
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 215, 255), 2)
 
         # Draw UI Overlay Components
-        # Left Side: Green Volume Bar
+        # Left Side: Gold Brightness Bar ☀️
         cv2.rectangle(img, (50, 150), (85, 400), (200, 200, 200), 3)
-        cv2.rectangle(img, (50, int(vol_bar)), (85, 400), (0, 255, 0), cv2.FILLED)
-        cv2.putText(img, f"VOL: {int(vol_per)}%", (20, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        cv2.rectangle(img, (50, int(bright_bar)), (85, 400), (0, 215, 255), cv2.FILLED)
+        cv2.putText(img, f"BRIGHT: {int(bright_per)}%", (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 215, 255), 2)
+        cv2.putText(img, "☀️ SUN", (35, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 215, 255), 2)
 
-        # Right Side: Gold Brightness Bar
+        # Right Side: Green Volume Bar 🔊
         cv2.rectangle(img, (1190, 150), (1225, 400), (200, 200, 200), 3)
-        cv2.rectangle(img, (1190, int(bright_bar)), (1225, 400), (0, 215, 255), cv2.FILLED)
-        cv2.putText(img, f"BRIGHT: {int(bright_per)}%", (1120, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 215, 255), 2)
+        cv2.rectangle(img, (1190, int(vol_bar)), (1225, 400), (0, 255, 0), cv2.FILLED)
+        cv2.putText(img, f"VOL: {int(vol_per)}%", (1130, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
+        cv2.putText(img, "🔊 VOL", (1175, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
         # Header Title Card
         cv2.rectangle(img, (20, 20), (620, 95), (0, 0, 0), cv2.FILLED)
@@ -169,11 +171,11 @@ def run_master_control():
         )
         cv2.putText(
             img,
-            f"Right Hand 🖐️: Vol {int(vol_per)}% | Left Hand 🤚: Bright {int(bright_per)}%",
+            f"Left 🤚: Bright {int(bright_per)}% | Right 🖐️: Vol {int(vol_per)}%",
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
-            (0, 255, 0),
+            (0, 215, 255),
             1
         )
 
