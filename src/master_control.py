@@ -6,6 +6,7 @@ Right Side HUD 🔊  <- System Volume Control (Right Hand 🖐️)
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
+Theme: Cyberpunk Neon
 """
 
 import math
@@ -18,11 +19,11 @@ import numpy as np
 
 # Import custom modules
 try:
-    from hand_tracker import HandDetector
+    from hand_tracker import HandDetector, CyberpunkTheme
     from volume_control import SystemAudioController, initialize_camera, generate_simulated_hand_frame
     from brightness_control import SystemBrightnessController
 except ImportError:
-    from src.hand_tracker import HandDetector
+    from src.hand_tracker import HandDetector, CyberpunkTheme
     from src.volume_control import SystemAudioController, initialize_camera, generate_simulated_hand_frame
     from src.brightness_control import SystemBrightnessController
 
@@ -63,6 +64,7 @@ def run_master_control():
     print("\n=======================================================")
     print(" 🚀 HandGesture Master Control - Dual Master Controller")
     print(" Author: Himesh Rupchandani")
+    print(" Theme: CYBERPUNK NEON ⚡")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
     print(" Left Side HUD ☀️  : Brightness Control (Left Hand 🤚)")
     print(" Right Side HUD 🔊 : Volume Control (Right Hand 🖐️)")
@@ -103,9 +105,9 @@ def run_master_control():
             bright_ctrl.set_brightness_pct(bright_per)
 
             if length < 25:
-                cv2.circle(img, center, 14, (0, 255, 0), cv2.FILLED)
+                cv2.circle(img, center, 14, CyberpunkTheme.MAGENTA, cv2.FILLED)
                 cv2.putText(img, "MUTED / DIM", (center[0] - 55, center[1] - 25),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
         else:
             # Flip image horizontally for natural mirror view
             img = cv2.flip(img, 1)
@@ -130,9 +132,9 @@ def run_master_control():
                             audio_ctrl.set_volume_pct(vol_per)
 
                             if length < 25:
-                                cv2.circle(img, (cx, cy), 12, (0, 255, 0), cv2.FILLED)
+                                cv2.circle(img, (cx, cy), 12, CyberpunkTheme.MAGENTA, cv2.FILLED)
                                 cv2.putText(img, "MUTED", (cx - 35, cy - 25),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
 
                         # LEFT HAND -> Brightness Control (Left Side HUD)
                         elif hand_label in ["Left", "Unknown"]:
@@ -141,32 +143,35 @@ def run_master_control():
                             bright_ctrl.set_brightness_pct(bright_per)
 
                             if length < 25:
-                                cv2.circle(img, (cx, cy), 12, (0, 215, 255), cv2.FILLED)
+                                cv2.circle(img, (cx, cy), 12, CyberpunkTheme.YELLOW, cv2.FILLED)
                                 cv2.putText(img, "DIM", (cx - 25, cy - 25),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 215, 255), 2)
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.YELLOW, 2)
 
         # Draw UI Overlay Components
-        # Left Side: Gold Brightness Bar ☀️
-        cv2.rectangle(img, (50, 150), (85, 400), (200, 200, 200), 3)
-        cv2.rectangle(img, (50, int(bright_bar)), (85, 400), (0, 215, 255), cv2.FILLED)
-        cv2.putText(img, f"BRIGHT: {int(bright_per)}%", (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 215, 255), 2)
-        cv2.putText(img, "☀️ SUN", (35, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 215, 255), 2)
+        # Left Side: Cyberpunk Gold Brightness Bar ☀️
+        cv2.rectangle(img, (50, 150), (85, 400), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (50, 150), (85, 400), CyberpunkTheme.CYAN, 2)
+        cv2.rectangle(img, (50, int(bright_bar)), (85, 400), CyberpunkTheme.YELLOW, cv2.FILLED)
+        cv2.putText(img, f"BRIGHT: {int(bright_per)}%", (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.75, CyberpunkTheme.YELLOW, 2)
+        cv2.putText(img, "☀️ SUN", (35, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.YELLOW, 2)
 
-        # Right Side: Green Volume Bar 🔊
-        cv2.rectangle(img, (1190, 150), (1225, 400), (200, 200, 200), 3)
-        cv2.rectangle(img, (1190, int(vol_bar)), (1225, 400), (0, 255, 0), cv2.FILLED)
-        cv2.putText(img, f"VOL: {int(vol_per)}%", (1130, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
-        cv2.putText(img, "🔊 VOL", (1175, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+        # Right Side: Cyberpunk Magenta Volume Bar 🔊
+        cv2.rectangle(img, (1190, 150), (1225, 400), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (1190, 150), (1225, 400), CyberpunkTheme.CYAN, 2)
+        cv2.rectangle(img, (1190, int(vol_bar)), (1225, 400), CyberpunkTheme.MAGENTA, cv2.FILLED)
+        cv2.putText(img, f"VOL: {int(vol_per)}%", (1130, 450), cv2.FONT_HERSHEY_SIMPLEX, 0.75, CyberpunkTheme.MAGENTA, 2)
+        cv2.putText(img, "🔊 VOL", (1175, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
 
         # Header Title Card
-        cv2.rectangle(img, (20, 20), (620, 95), (0, 0, 0), cv2.FILLED)
+        cv2.rectangle(img, (20, 20), (620, 95), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (20, 20), (620, 95), CyberpunkTheme.CYAN, 2)
         cv2.putText(
             img,
             "HandGesture Master Control: Dual Mode",
             (30, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
-            (255, 255, 255),
+            CyberpunkTheme.WHITE,
             2
         )
         cv2.putText(
@@ -175,21 +180,22 @@ def run_master_control():
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
-            (0, 215, 255),
+            CyberpunkTheme.CYAN,
             1
         )
 
         # Mode Badge
         mode_text = "MODE: DUAL WEBCAM" if not is_simulator_mode else "MODE: INTERACTIVE SIMULATOR"
-        cv2.rectangle(img, (820, 20), (1130, 55), (0, 0, 0), cv2.FILLED)
-        cv2.putText(img, mode_text, (830, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+        cv2.rectangle(img, (820, 20), (1130, 55), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (820, 20), (1130, 55), CyberpunkTheme.MAGENTA, 1)
+        cv2.putText(img, mode_text, (830, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.5, CyberpunkTheme.CYAN, 2)
 
         # Calculate FPS
         c_time = time.time()
         fps = 1 / (c_time - p_time) if (c_time - p_time) > 0 else 0
         p_time = c_time
 
-        cv2.putText(img, f"FPS: {int(fps)}", (1150, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+        cv2.putText(img, f"FPS: {int(fps)}", (1150, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, CyberpunkTheme.YELLOW, 2)
 
         # Render Frame
         cv2.imshow("HandGesture Master Control - Dual Controller", img)

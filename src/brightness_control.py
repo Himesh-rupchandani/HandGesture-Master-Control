@@ -2,13 +2,14 @@
 Brightness Control Module using Hand Gestures (Prompt 2).
 Controls screen brightness using Left Hand Thumb-to-Index distance gestures.
 
-Features Dual Execution Modes:
+Features Cyberpunk Neon Theme HUD & Dual Execution Modes:
   1. Live Webcam Mode (Automatic when hardware camera is present)
   2. Interactive Hand Simulator Mode (Automatic fallback for GitHub Codespaces / Cloud VMs / Camera errors)
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
 Prompt: Prompt 2 - Brightness Control
+Theme: Cyberpunk Neon
 """
 
 import math
@@ -19,11 +20,11 @@ import time
 import cv2
 import numpy as np
 
-# Import custom HandDetector module
+# Import custom HandDetector module & CyberpunkTheme
 try:
-    from hand_tracker import HandDetector
+    from hand_tracker import HandDetector, CyberpunkTheme
 except ImportError:
-    from src.hand_tracker import HandDetector
+    from src.hand_tracker import HandDetector, CyberpunkTheme
 
 # Import screen-brightness-control safely
 try:
@@ -123,13 +124,15 @@ def initialize_camera(requested_idx=0):
 
 def generate_simulated_hand_frame(sim_distance, auto_mode=True):
     """
-    Generates a 1280x720 frame rendering a synthetic 21-landmark Left Hand skeleton.
+    Generates a 1280x720 Cyberpunk Neon frame rendering a synthetic 21-landmark Left Hand skeleton.
     Simulates thumb & index distance pinch/spread gestures for brightness testing.
     """
     img = np.zeros((720, 1280, 3), dtype=np.uint8)
 
-    bg_val = int(10 + (sim_distance / 200) * 45)
-    img[:, :] = (bg_val, bg_val + 5, bg_val + 10)
+    for y in range(0, 720, 40):
+        cv2.line(img, (0, y), (1280, y), (30, 20, 35), 1)
+    for x in range(0, 1280, 40):
+        cv2.line(img, (x, 0), (x, 720), (30, 20, 35), 1)
 
     wrist = (640, 580)
 
@@ -157,30 +160,29 @@ def generate_simulated_hand_frame(sim_distance, auto_mode=True):
 
     for p1_id, p2_id in connections:
         pt1, pt2 = landmarks[p1_id], landmarks[p2_id]
-        cv2.line(img, pt1, pt2, (0, 215, 255), 2)
+        cv2.line(img, pt1, pt2, CyberpunkTheme.YELLOW, 2)
 
     for lm_id, pt in landmarks.items():
-        color = (0, 255, 255) if lm_id in [4, 8] else (0, 165, 255)
+        color = CyberpunkTheme.YELLOW if lm_id in [4, 8] else CyberpunkTheme.CYAN
         radius = 8 if lm_id in [4, 8] else 5
         cv2.circle(img, pt, radius, color, cv2.FILLED)
-        cv2.circle(img, pt, radius + 2, (255, 255, 255), 1)
+        cv2.circle(img, pt, radius + 2, CyberpunkTheme.MAGENTA, 1)
 
-    line_color = (0, 255, 255) if sim_distance > 30 else (0, 0, 255)
+    line_color = CyberpunkTheme.YELLOW if sim_distance > 30 else CyberpunkTheme.MAGENTA
     cv2.line(img, (thumb_x, thumb_y), (index_x, index_y), line_color, 3)
     cx, cy = (thumb_x + index_x) // 2, (thumb_y + index_y) // 2
     cv2.circle(img, (cx, cy), 10, line_color, cv2.FILLED)
 
-    # Help overlay
-    cv2.rectangle(img, (750, 550), (1250, 690), (0, 0, 0), cv2.FILLED)
-    cv2.rectangle(img, (750, 550), (1250, 690), (0, 215, 255), 2)
-    cv2.putText(img, "☀️ BRIGHTNESS SIMULATOR CONTROLS:", (765, 580),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
-    cv2.putText(img, " • Press 'A' / Left Arrow  : Pinch (Dim -> 0%)", (765, 610),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-    cv2.putText(img, " • Press 'D' / Right Arrow : Spread (Bright -> 100%)", (765, 635),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-    cv2.putText(img, f" • Press 'S' : Toggle Auto-Animate [{ 'ON' if auto_mode else 'OFF' }]", (765, 660),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0) if auto_mode else (200, 200, 200), 1)
+    cv2.rectangle(img, (750, 540), (1250, 690), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+    cv2.rectangle(img, (750, 540), (1250, 690), CyberpunkTheme.YELLOW, 2)
+    cv2.putText(img, "☀️ CYBERPUNK BRIGHTNESS CONTROLS:", (765, 575),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55, CyberpunkTheme.YELLOW, 2)
+    cv2.putText(img, " • Press 'A' / Left Arrow  : Pinch (Dim -> 0%)", (765, 605),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, CyberpunkTheme.WHITE, 1)
+    cv2.putText(img, " • Press 'D' / Right Arrow : Spread (Bright -> 100%)", (765, 630),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, CyberpunkTheme.WHITE, 1)
+    cv2.putText(img, f" • Press 'S' : Toggle Auto-Animate [{ 'ON' if auto_mode else 'OFF' }]", (765, 655),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.5, CyberpunkTheme.YELLOW if auto_mode else (180, 180, 180), 1)
 
     return img, sim_distance, (thumb_x, thumb_y), (index_x, index_y), (cx, cy)
 
@@ -218,6 +220,7 @@ def run_brightness_control():
     print("\n=======================================================")
     print(" ☀️ HandGesture Master Control - Module 2: Brightness Control")
     print(" Author: Himesh Rupchandani")
+    print(" Theme: CYBERPUNK NEON ⚡")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
     print(" Hand Assigned: LEFT HAND 🤚")
     print(" Gesture: Left Thumb Tip (4) <---> Left Index Tip (8)")
@@ -257,9 +260,9 @@ def run_brightness_control():
             bright_ctrl.set_brightness_pct(bright_per)
 
             if length < 25:
-                cv2.circle(img, center, 14, (0, 0, 255), cv2.FILLED)
+                cv2.circle(img, center, 14, CyberpunkTheme.MAGENTA, cv2.FILLED)
                 cv2.putText(img, "MIN BRIGHTNESS", (center[0] - 65, center[1] - 25),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
         else:
             img = cv2.flip(img, 1)
 
@@ -284,34 +287,36 @@ def run_brightness_control():
                             bright_ctrl.set_brightness_pct(bright_per)
 
                             if length < 25:
-                                cv2.circle(img, (cx, cy), 12, (0, 0, 255), cv2.FILLED)
+                                cv2.circle(img, (cx, cy), 12, CyberpunkTheme.MAGENTA, cv2.FILLED)
                                 cv2.putText(img, "DIM / MIN", (cx - 50, cy - 25),
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
                             break
 
-        # Draw UI Overlay Components (Brightness Bar on LEFT SIDE)
-        cv2.rectangle(img, (50, 150), (85, 400), (200, 200, 200), 3)
-        cv2.rectangle(img, (50, int(bright_bar)), (85, 400), (0, 215, 255), cv2.FILLED)
+        # Cyberpunk Neon Brightness Bar on LEFT SIDE
+        cv2.rectangle(img, (50, 150), (85, 400), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (50, 150), (85, 400), CyberpunkTheme.MAGENTA, 2)
+        cv2.rectangle(img, (50, int(bright_bar)), (85, 400), CyberpunkTheme.YELLOW, cv2.FILLED)
         cv2.putText(
             img,
             f"{int(bright_per)}%",
             (40, 450),
             cv2.FONT_HERSHEY_SIMPLEX,
             1.0,
-            (0, 215, 255),
+            CyberpunkTheme.YELLOW,
             3
         )
-        cv2.putText(img, "☀️ SUN", (35, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 215, 255), 2)
+        cv2.putText(img, "☀️ SUN", (35, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.YELLOW, 2)
 
         # Header Title Card
-        cv2.rectangle(img, (20, 20), (600, 95), (0, 0, 0), cv2.FILLED)
+        cv2.rectangle(img, (20, 20), (600, 95), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (20, 20), (600, 95), CyberpunkTheme.YELLOW, 2)
         cv2.putText(
             img,
             "HandGesture Control: Brightness (Left Hand)",
             (30, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
-            (255, 255, 255),
+            CyberpunkTheme.WHITE,
             2
         )
         cv2.putText(
@@ -320,17 +325,17 @@ def run_brightness_control():
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
-            (0, 215, 255),
+            CyberpunkTheme.YELLOW,
             1
         )
 
         # Execution Mode Badge
         mode_text = "MODE: LIVE WEBCAM [LEFT HAND]" if not is_simulator_mode else "MODE: INTERACTIVE SIMULATOR"
-        badge_color = (0, 215, 255) if not is_simulator_mode else (0, 165, 255)
-        cv2.rectangle(img, (750, 20), (1130, 55), (0, 0, 0), cv2.FILLED)
-        cv2.putText(img, mode_text, (760, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.45, badge_color, 2)
+        cv2.rectangle(img, (750, 20), (1130, 55), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (750, 20), (1130, 55), CyberpunkTheme.CYAN, 1)
+        cv2.putText(img, mode_text, (760, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.YELLOW, 2)
 
-        # Calculate and display FPS
+        # Calculate FPS
         c_time = time.time()
         fps = 1 / (c_time - p_time) if (c_time - p_time) > 0 else 0
         p_time = c_time
@@ -341,7 +346,7 @@ def run_brightness_control():
             (1150, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.8,
-            (255, 255, 0),
+            CyberpunkTheme.YELLOW,
             2
         )
 
@@ -350,7 +355,7 @@ def run_brightness_control():
 
         # Key press handler
         key = cv2.waitKey(30) & 0xFF
-        if key == ord('q') or key == 27:  # 'q' or ESC
+        if key == ord('q') or key == 27:
             print("\nExiting Brightness Control Module... Goodbye!")
             break
         elif key in [ord('a'), 81, 2] and is_simulator_mode:
