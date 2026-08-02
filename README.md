@@ -4,7 +4,7 @@
 ![OpenCV](https://img.shields.io/badge/OpenCV-Computer%20Vision-green?style=for-the-badge&logo=opencv)
 ![MediaPipe](https://img.shields.io/badge/MediaPipe-21%20Landmarks-orange?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
-![Status](https://img.shields.io/badge/Build-Prompt%201%20Completed-success?style=for-the-badge)
+![Status](https://img.shields.io/badge/Build-Prompt%202%20Completed-success?style=for-the-badge)
 
 A real-time **AI-Powered Human-Computer Interaction (HCI)** system that converts 21-landmark 3D hand gestures captured via camera into direct OS-level system automation (Volume Control, Brightness Control, YouTube Navigation, Media Play/Pause).
 
@@ -15,20 +15,20 @@ Developed by **Himesh Rupchandani** (CSE AI & DS Student, Rajkot, Gujarat).
 ## 🌟 Key Features
 
 - 🎯 **Real-time 21-Landmark Hand Tracking:** Powered by Google MediaPipe & OpenCV.
-- 🔊 **Gesture Volume Control (Prompt 1):** Dynamically control OS master volume by adjusting Thumb-to-Index finger distance.
-- 📊 **Visual Feedback HUD:** Real-time vertical volume bar, percentage display, pinch mute indicator, and FPS counter.
+- 🔊 **Right Hand Volume Control (Prompt 1):** Dynamically control OS master volume by adjusting Right Hand Thumb-to-Index distance.
+- ☀️ **Left Hand Brightness Control (Prompt 2):** Dynamically control screen brightness by adjusting Left Hand Thumb-to-Index distance.
+- 📊 **Visual Feedback HUD:** Dual-sided visual bars (Green Volume bar on Left, Gold Sun Brightness bar on Right).
+- 🎮 **Dual Execution Mode:** Runs with live hardware webcam or interactive 3D hand simulator fallback.
 - ⚡ **Low Latency Performance:** Runs smoothly at 30+ FPS on standard laptop webcams.
-- 💻 **Modular Architecture:** Clean decoupled modules (`hand_tracker.py` and `volume_control.py`) ready for future gesture extensions.
 
 ---
 
-## 🖐️ Gesture Control Mapping (Prompt 1)
+## 🖐️ Gesture Control Mapping
 
-| Gesture | Action | Visual Indicator |
-| :--- | :--- | :--- |
-| **Thumb + Index Pinch (< 25px)** | Volume → 0% (Muted) | Green Circle + "MUTED / MIN" HUD |
-| **Thumb + Index Spread (20px - 180px)** | Volume → 0% to 100% | Dynamic Vertical Bar Fill |
-| **Press 'Q' or 'ESC'** | Exit Program | Terminal Cleanup & Release |
+| Module | Hand Assigned | Gesture | Action | Visual Indicator |
+| :--- | :--- | :--- | :--- | :--- |
+| **Volume Control** | **Right Hand** 🖐️ | Thumb + Index Pinch/Spread | Volume 0% $\leftrightarrow$ 100% | Green Bar (Left Side) |
+| **Brightness Control** | **Left Hand** 🤚 | Thumb + Index Pinch/Spread | Brightness 0% $\leftrightarrow$ 100% | Gold Sun Bar ☀️ (Right Side) |
 
 ---
 
@@ -45,7 +45,8 @@ HandGesture-Master-Control/
 │   └── CV_BULLETS.md         ← Ready-to-copy CV bullet points & strategy
 └── src/
     ├── hand_tracker.py       ← Reusable MediaPipe Hand Detector Module
-    └── volume_control.py     ← Prompt 1: Gesture Volume Controller
+    ├── volume_control.py     ← Prompt 1: Right Hand Volume Controller
+    └── brightness_control.py ← Prompt 2: Left Hand Brightness Controller
 ```
 
 ---
@@ -63,17 +64,24 @@ cd HandGesture-Master-Control
 pip install -r requirements.txt
 ```
 
-### 3. Run Volume Control Module
+### 3. Run Modules
+
+**Run Volume Control (Prompt 1 - Right Hand):**
 ```bash
 python src/volume_control.py
+```
+
+**Run Brightness Control (Prompt 2 - Left Hand):**
+```bash
+python src/brightness_control.py
 ```
 
 ---
 
 ## 🚀 8-Prompt Project Roadmap
 
-- [x] **Prompt 1: Volume Control** ✅ *(Thumb-to-Index Pinch & Spread)*
-- [ ] **Prompt 2: Brightness Control** 🔜 *(Left Hand Gesture Control)*
+- [x] **Prompt 1: Volume Control** ✅ *(Right Hand Pinch & Spread)*
+- [x] **Prompt 2: Brightness Control** ✅ *(Left Hand Pinch & Spread)*
 - [ ] **Prompt 3: YouTube Controls** 🔜 *(Swipe Left/Right for Seek, PyAutoGUI integration)*
 - [ ] **Prompt 4: Play/Pause & Mute** 🔜 *(Fist / Open Palm detection)*
 - [ ] **Prompt 5: Dual-Hand System Logic** 🔜 *(Right Hand = Volume, Left Hand = Brightness)*
