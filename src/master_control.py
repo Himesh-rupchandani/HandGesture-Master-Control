@@ -1,13 +1,10 @@
 """
-HandGesture Master Controller (Clean Volume + Brightness + Play/Pause Edition).
-Combines Volume Control, Brightness Control, and Play/Pause Toggle into ONE unified camera feed!
+HandGesture Master Controller (Pure Volume + Brightness Edition).
+Combines Right Hand Volume Control and Left Hand Brightness Control into ONE clean, rock-solid camera feed!
 
 Clean Gesture Mapping:
   🖐️ Right Hand Pinch/Spread : Master Volume Control (Right Green Bar 🔊)
   🤚 Left Hand Pinch/Spread  : Screen Brightness Control (Left Gold Bar ☀️)
-  ✊ Fist (0 Fingers)        : FIST ✊ -> PLAY / PAUSE TOGGLE (with Custom Sound FX!)
-
-Compatible with YouTube (Opera GX, Chrome, Edge), Netflix, Prime Video, VLC, and Spotify.
 
 Author: Himesh Rupchandani
 Project: HandGesture-Master-Control
@@ -18,15 +15,9 @@ import math
 import os
 import platform
 import sys
-import threading
 import time
 import cv2
 import numpy as np
-import pyautogui
-
-# PyAutoGUI Safety Settings
-pyautogui.FAILSAFE = False
-pyautogui.PAUSE = 0.05
 
 # Import custom modules
 try:
@@ -39,42 +30,9 @@ except ImportError:
     from src.brightness_control import SystemBrightnessController
 
 
-class GestureSoundFX:
-    """
-    Asynchronous custom sound effect engine supporting Windows winsound beeps,
-    custom WAV audio files, and zero video stuttering.
-    """
-
-    @staticmethod
-    def play_action_sound(sound_type="play_pause"):
-        """
-        Play custom sound asynchronously in background thread.
-        """
-        def _sound_worker():
-            try:
-                # 1. Check for custom WAV file in assets/sounds/
-                custom_wav = os.path.join("assets", "sounds", f"{sound_type}.wav")
-                if os.path.exists(custom_wav) and platform.system() == "Windows":
-                    import winsound
-                    winsound.PlaySound(custom_wav, winsound.SND_FILENAME | winsound.SND_ASYNC)
-                    return
-
-                # 2. Native Cyberpunk audio tone synthesis
-                if platform.system() == "Windows":
-                    import winsound
-                    if sound_type == "play_pause":
-                        winsound.Beep(1200, 120)  # High futuristic beep for Play/Pause
-                    elif sound_type == "mute":
-                        winsound.Beep(500, 100)   # Low mute tone
-            except Exception:
-                pass
-
-        threading.Thread(target=_sound_worker, daemon=True).start()
-
-
 def run_master_control():
     """
-    Main loop combining Volume Control, Brightness Control, and Play/Pause Toggle.
+    Main loop combining Volume Control and Brightness Control.
     """
     cam_index = 0
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
@@ -100,26 +58,19 @@ def run_master_control():
     bright_per = bright_ctrl.current_brightness
     p_time = time.time()
 
-    # Play/Pause Status & Debounce Timer
-    last_action_text = "READY - USE FIST ✊ FOR PLAY / PAUSE"
-    last_action_color = CyberpunkTheme.CYAN
-    last_playpause_time = 0
-    playpause_cooldown = 1.2
-
     # Simulator State
     sim_dist = 100
     sim_direction = 2
     auto_animate = True
 
     print("\n=======================================================")
-    print(" 🚀 HandGesture Master Control - ALL-IN-ONE MASTER CONTROLLER")
+    print(" 🚀 HandGesture Master Control - PURE MASTER CONTROLLER")
     print(" Author: Himesh Rupchandani")
-    print(" Theme: CYBERPUNK NEON ⚡ (Clean Edition)")
+    print(" Theme: CYBERPUNK NEON ⚡")
     print(" Mode: " + ("LIVE WEBCAM" if not is_simulator_mode else "INTERACTIVE HAND SIMULATOR"))
     print(" Gesture Rules:")
     print("  🖐️ Right Hand Pinch/Spread : Master Volume Control (Right Green Bar)")
     print("  🤚 Left Hand Pinch/Spread  : Screen Brightness Control (Left Gold Bar)")
-    print("  ✊ Fist (0 Fingers)        : FIST ✊ -> PLAY / PAUSE TOGGLE")
     print(" Press 'Q' or 'ESC' to Quit")
     print("=======================================================\n")
 
@@ -173,9 +124,6 @@ def run_master_control():
                     lm_list, bbox = detector.find_positions(img, hand_no=h_idx, draw=False)
 
                     if len(lm_list) != 0:
-                        fingers = detector.fingers_up(hand_no=h_idx)
-                        num_fingers = sum(fingers)
-
                         # Calculate Thumb-Index Distance for Pinch/Spread
                         length, img, line_info = detector.find_distance(4, 8, img, draw=True, r=10, t=3)
                         cx, cy = line_info[4], line_info[5]
@@ -190,7 +138,6 @@ def run_master_control():
                                 cv2.circle(img, (cx, cy), 12, CyberpunkTheme.MAGENTA, cv2.FILLED)
                                 cv2.putText(img, "MUTED", (cx - 35, cy - 25),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
-                                GestureSoundFX.play_action_sound("mute")
 
                         # LEFT HAND -> Brightness Control
                         elif hand_label in ["Left", "Unknown"]:
@@ -202,31 +149,6 @@ def run_master_control():
                                 cv2.circle(img, (cx, cy), 12, CyberpunkTheme.YELLOW, cv2.FILLED)
                                 cv2.putText(img, "DIM", (cx - 25, cy - 25),
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.YELLOW, 2)
-
-                        # ✊ FIST (0 FINGERS EXTENDED) -> PLAY / PAUSE TOGGLE
-                        if num_fingers == 0:
-                            now = time.time()
-                            if now - last_playpause_time >= playpause_cooldown:
-                                try:
-                                    if platform.system() == "Windows":
-                                        import ctypes
-                                        VK_SPACE = 0x20
-                                        VK_K = 0x4B
-                                        user32 = ctypes.windll.user32
-                                        user32.keybd_event(VK_K, 0, 0, 0)
-                                        user32.keybd_event(VK_K, 0, 2, 0)
-                                        user32.keybd_event(VK_SPACE, 0, 0, 0)
-                                        user32.keybd_event(VK_SPACE, 0, 2, 0)
-                                    pyautogui.press('k')
-                                    pyautogui.press('space')
-                                except Exception:
-                                    pass
-
-                                last_playpause_time = now
-                                last_action_text = "FIST ✊ -> PLAY / PAUSE TOGGLE"
-                                last_action_color = CyberpunkTheme.YELLOW
-                                print("[MasterController] ✊ Fist Detected -> Play/Pause Toggled")
-                                GestureSoundFX.play_action_sound("play_pause")
 
         # Draw UI Overlay Components
         # Left Side: Cyberpunk Gold Brightness Bar ☀️
@@ -244,11 +166,11 @@ def run_master_control():
         cv2.putText(img, "🔊 VOL", (1175, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.6, CyberpunkTheme.MAGENTA, 2)
 
         # Header Title Card
-        cv2.rectangle(img, (20, 20), (660, 95), CyberpunkTheme.DARK_CARD, cv2.FILLED)
-        cv2.rectangle(img, (20, 20), (660, 95), CyberpunkTheme.CYAN, 2)
+        cv2.rectangle(img, (20, 20), (620, 95), CyberpunkTheme.DARK_CARD, cv2.FILLED)
+        cv2.rectangle(img, (20, 20), (620, 95), CyberpunkTheme.CYAN, 2)
         cv2.putText(
             img,
-            "HandGesture Control: MASTER CONTROLLER",
+            "HandGesture Master Control System",
             (30, 50),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.7,
@@ -257,29 +179,16 @@ def run_master_control():
         )
         cv2.putText(
             img,
-            f"Left 🤚: Bright {int(bright_per)}% | Right 🖐️: Vol {int(vol_per)}% | Fist ✊: Play / Pause Toggle",
+            f"Left Hand 🤚: Brightness {int(bright_per)}% | Right Hand 🖐️: Volume {int(vol_per)}%",
             (30, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.42,
+            0.45,
             CyberpunkTheme.CYAN,
             1
         )
 
-        # Status Notification Banner in Center
-        cv2.rectangle(img, (280, 620), (1000, 680), CyberpunkTheme.DARK_CARD, cv2.FILLED)
-        cv2.rectangle(img, (280, 620), (1000, 680), last_action_color, 2)
-        cv2.putText(
-            img,
-            last_action_text,
-            (300, 660),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            last_action_color,
-            2
-        )
-
         # Mode Badge
-        mode_text = "MODE: ALL-IN-ONE MASTER" if not is_simulator_mode else "MODE: INTERACTIVE SIMULATOR"
+        mode_text = "MODE: LIVE WEBCAM" if not is_simulator_mode else "MODE: INTERACTIVE SIMULATOR"
         cv2.rectangle(img, (750, 20), (1130, 55), CyberpunkTheme.DARK_CARD, cv2.FILLED)
         cv2.rectangle(img, (750, 20), (1130, 55), CyberpunkTheme.MAGENTA, 1)
         cv2.putText(img, mode_text, (760, 43), cv2.FONT_HERSHEY_SIMPLEX, 0.45, CyberpunkTheme.CYAN, 2)
@@ -292,7 +201,7 @@ def run_master_control():
         cv2.putText(img, f"FPS: {int(fps)}", (1150, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.8, CyberpunkTheme.YELLOW, 2)
 
         # Render Frame
-        cv2.imshow("HandGesture Master Control - All-In-One", img)
+        cv2.imshow("HandGesture Master Control - Pure Volume & Brightness", img)
 
         # Key press handler
         key = cv2.waitKey(30) & 0xFF
